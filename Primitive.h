@@ -4,6 +4,7 @@
 #include "Shape.h"
 #include "Transformation.h"
 #include "Color.h"
+#include "Ray.h"
 
 #include <iostream>
 #include <vector>
@@ -11,7 +12,7 @@
 using namespace std;
 
 
-struct Material {
+class Material {
     Color specular, diffuse;
     float specularExponent;
 };
@@ -20,10 +21,18 @@ struct Material {
 class Primitive
 {
 public:
+
+
+    class Intersection {
+    public:
+        Primitive* primitive;
+        LocalGeo* local;
+    };
+
     Primitive() {};
-    virtual bool isHit(const Ray& ray) {};
-    virtual float intersect(const Ray& ray) {};
-    virtual Material* getBRDF();
+    virtual const bool isHit(const Ray& ray) = 0;
+    virtual const Intersection intersect(const Ray& ray) = 0;
+    virtual Material* getBRDF() = 0;
 };
 
 
@@ -35,8 +44,8 @@ private:
     Material *material;
 public:
     GeometricPrimitive(Shape* inShape, Material* inMaterial, Transformation inTransform);
-    bool isHit(const Ray& ray);
-    float intersect(const Ray& ray);
+    const bool isHit(const Ray& ray);
+    const Intersection intersect(const Ray& ray);
     Material* getBRDF() { return material; }
 };
 
@@ -49,13 +58,16 @@ GeometricPrimitive::GeometricPrimitive(Shape *inShape, Material* inMaterial, Tra
 }
 
 
-bool GeometricPrimitive::isHit(const Ray &ray) {
+const bool GeometricPrimitive::isHit(const Ray &ray) {
     return shape->isHit(ray);
 }
 
 
-float GeometricPrimitive::intersect(const Ray &ray) {
-    return shape->intersect(ray);
+const Intersection GeometricPrimitive::intersect(const Ray &ray) {
+    Intersection inter;
+    inter.primitive = this;
+    inter.local = &(shape->intersect(ray));
+    return inter;
 }
 
 

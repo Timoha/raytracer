@@ -1,6 +1,10 @@
 #ifndef COLOR_H
 #define COLOR_H
 
+#include <iostream>
+#include <string>
+
+using namespace std;
 
 class Color {
 private:
@@ -9,6 +13,7 @@ public:
     float getRed() { return r; };
     float getGreen() { return g; };
     float getBlue() { return b; };
+    Color();
     Color(float inR, float inG, float inB);
     Color(const Color &rhs);
     Color& operator=(const Color &rhs);
@@ -18,6 +23,12 @@ public:
     friend Color operator+ (const Color& x, const Color& y);
     friend ostream& operator<< (ostream &out, Color &cColor);
 };
+
+Color::Color() {
+    r = 0.0;
+    g = 0.0;
+    b = 0.0;
+}
 
 Color::Color(float inR, float inG, float inB) {
     r = inR;

@@ -13,8 +13,8 @@ class Shape
 {
 public:
     Shape() {};
-    virtual bool isHit(const Ray& ray) {};
-    virtual float intersect(const Ray& ray) {};
+    virtual const bool isHit(const Ray& ray) = 0;
+    virtual const LocalGeo intersect(const Ray& ray) = 0;
 };
 
 
@@ -25,8 +25,8 @@ class Sphere : public Shape
 public:
     Sphere();
     Sphere(Eigen::Vector4f inOrigin, float inRadius);
-    bool isHit(const Ray& ray);
-    float intersect(const Ray& ray);
+    const bool isHit(const Ray& ray);
+    const LocalGeo intersect(const Ray& ray);
 private:
     Eigen::Vector4f origin;
     float radius;
@@ -45,7 +45,7 @@ Sphere::Sphere(Eigen::Vector4f inOrigin, float inRadius) {
 }
 
 
-bool Sphere::isHit(const Ray& r) {
+const bool Sphere::isHit(const Ray& r) {
     Eigen::Vector4f d = r.direction;
     Eigen::Vector4f ec = r.source - origin;
 
@@ -56,11 +56,11 @@ bool Sphere::isHit(const Ray& r) {
     return discr >= 0;
 }
 
-float Sphere::intersect(const Ray& ray){
-    Eigen::Vector4f d = r.direction;
-    Eigen::Vector4f ec = r.source - origin;
+const LocalGeo Sphere::intersect(const Ray& ray){
+    Eigen::Vector4f d = ray.direction;
+    Eigen::Vector4f ec = ray.source - origin;
 
-//    LocalGeo intersection;
+
 
     float term1 = d.dot(ec) * d.dot(ec);
     float term2 = d.dot(d) * ec.dot(ec) - radius*radius;
@@ -70,12 +70,14 @@ float Sphere::intersect(const Ray& ray){
     // float t2 = (-(d.dot(ec)) + sqrt(discr)) / (d.dot(d));
 
 
-    return t1;
+//    return t1;
 
-//    intersection.position = r.source + t1 * r.direction;
-//    intersection.normal = (intersection.position - origin).normalized();
-//
-//    return intersection;
+    LocalGeo local;
+    local.point = ray.source + t1 * ray.direction;
+    local.normal = (local.point - origin).normalized();
+    local.tHit = t1;
+
+    return local;
 
 }
 

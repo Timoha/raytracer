@@ -7,16 +7,16 @@
 
 
 class Light {
-private:
-    Color color;
 public:
     Light();
     Light(Color inColor);
     Color getColor() { return color; }
+private:
+    Color color;
 };
 
 Light::Light() {
-    color = Color(0, 0, 0);
+    color = Color(0.0, 0.0, 0.0);
 }
 
 Light::Light(Color inColor) {
