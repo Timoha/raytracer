@@ -1,11 +1,11 @@
 #ifndef TRANSFORMATION_H
 #define TRANSFORMATION_H
 
-
+#include <vector>
 #include <iostream>
-#include <math.h>
 
 #include <Eigen/Dense>
+
 
 #define PI 3.14159265
 
@@ -14,19 +14,26 @@ using namespace std;
 class Transformation
 {
 public:
-    Transformation() {};
+    Transformation();
     Transformation(const Transformation &rhs);
     Transformation& operator=(const Transformation &rhs);
     friend ostream& operator<< (ostream &out, Transformation &t);
     friend Transformation operator* (const Transformation& x, const Transformation& y);
-    friend Eigen::Vector3d operator* (const Transformation& x, const Eigen::Vector3d& y);
-//    friend Eigen::Vector3d operator* (const Eigen::Vector3d& x, const Transformation& y);
+    friend Eigen::Vector4f operator* (const Transformation& x, const Eigen::Vector4f& y);
+    friend Eigen::Vector4f operator* (const Eigen::Vector4f& x, const Transformation& y);
+
+    Transformation getInverse();
+    void compose(const vector<Transformation> &ts);
 
 protected:
     Eigen::Matrix4f matrix, inverseTranspose;
 };
 
 
+Transformation::Transformation() {
+    matrix = Eigen::Matrix4f::Identity();
+    inverseTranspose = Eigen::Matrix4f::Identity();
+}
 
 Transformation::Transformation(const Transformation &rhs) {
     matrix = rhs.matrix;
@@ -61,15 +68,32 @@ Transformation operator* (const Transformation& x, const Transformation& y) {
     return temp;
 }
 
-Eigen::Vector3d operator* (const Transformation& x, const Eigen::Vector3d& y) {
-    Eigen::Vector3d temp = x.matrix * y;
+Eigen::Vector4f operator* (const Transformation& x, const Eigen::Vector4f& y) {
+    return x.matrix * y;
+}
+
+
+Eigen::Vector4f operator* (const Eigen::Vector4f& x, const Transformation& y) {
+    return y * x;
+}
+
+
+Transformation Transformation::getInverse() {
+    Transformation temp;
+    temp.matrix = (this->matrix).inverse();
+    temp.inverseTranspose = (this->inverseTranspose).inverse(); // ? Not sure ??
     return temp;
 }
 
 
-//Eigen::Vector3d operator* (const Eigen::Vector3d& x, const Transformation& y) {
-//    return y * x;
-//}
+void Transformation::compose(const vector<Transformation> &ts) {
+    Transformation final;
+    for (unsigned i = ts.size(); i-- > 0; ) {
+        final = final * ts[i];
+    }
+
+    *this = final;
+}
 
 
 class Scaling : public Transformation
