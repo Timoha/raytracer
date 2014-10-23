@@ -8,14 +8,6 @@
 
 #include <Eigen/Dense>
 
-//#ifdef OSX
-//#include <GLUT/glut.h>
-//#include <OpenGL/glu.h>
-//#else
-////#include <GL/glut.h>
-////#include <OpenGL/glu.h>
-//#endif
-
 
 #include "Transformation.h"
 #include "Shape.h"
@@ -48,9 +40,9 @@ vector<DLight> dlights;
 
 
 
-Ray generateRay(float i, float j){
-    float focalplane = (UL + (xvec * i + yvec * j) / 100)[2];
-    Eigen::Vector4f pixel_loc = Eigen::Vector4f(UL[0]+xvec[0]*i/100, UL[0]+ yvec[1]*j/100, focalplane, 1.0f);
+Ray generateRay(float i, float j, int width, int height) {
+    float focalplane = (UL + xvec * i / width + yvec * j / height)[2];
+    Eigen::Vector4f pixel_loc = Eigen::Vector4f(UL[0] + xvec[0] * i / width, UL[0]+ yvec[1]*j/ height, focalplane, 1.0f);
     Eigen::Vector4f direction = pixel_loc - eye;
     direction.normalize();
     ///FIX ME
@@ -72,8 +64,6 @@ Color trace(Ray ray, const vector<Primitive*>& balls){
                 closest_t = intersect.local.tHit;
                 closestInter = intersect;
             }
-
-            //return Color(red, blue, green);
         }
     }
 
@@ -106,7 +96,7 @@ Color trace(Ray ray, const vector<Primitive*>& balls){
         l.normalize();
 
         // reflected
-        Eigen::Vector4f r = -l + 2 * l.dot(n) * n;
+        Eigen::Vector4f r = l - 2 * l.dot(n) * n;
         r.normalize();
 
 
@@ -144,8 +134,7 @@ void checkNumArguments(vector<string> * args, int min) {
 
 void parseLine(string line) {
     istringstream iss(line);
-    vector<string> tokens{istream_iterator<string>{iss},
-            istream_iterator<string>{}};
+    vector<string> tokens{istream_iterator<string>{iss}, istream_iterator<string>{}};
 
     Transformation test;
 
@@ -242,45 +231,46 @@ int main(int argc, const char * argv[]) {
 
 
 
-    int height = 200;
-    int width = 200;
+    int height = 900;
+    int width = 900;
 
     xvec = UR - UL;
     yvec = UL - LL;
 
 
     Film negative(width, height);
-    Color rgbs1(1.0f, 1.0f, 1.0f);
-    Color rgbd1(0.0f, 0.4f, 0.3f);
+
     Sphere test1 = Sphere(Eigen::Vector4f(0.0f, 0.0f, -2.0f, 1.0f), 1.0f);
+
     Material matTest1;
-    matTest1.specular = rgbs1;
-    matTest1.diffuse = rgbd1;
+    matTest1.specular = Color(0.0f, 0.4f, 0.3f);
+    matTest1.diffuse = Color(1.0f, 1.0f, 1.0f);
     matTest1.specularExponent = 2.0f;
 
     Transformation identity;
     GeometricPrimitive testSphere1(&test1, &matTest1, identity);
 
     balls.push_back(&testSphere1);
+//
+//    Sphere test2 = Sphere(Eigen::Vector4f(1.0f, 0.0f, -2.5f, 1.0f), 1.0f);
+//    Material matTest2;
+//    matTest2.specular = Color(0.3f, 0.5f, 0.2f);
+//    matTest2.diffuse = Color(1.0f, 0.0f, 1.0f);
+//    matTest2.specularExponent = 2.0f;
+//
+//    GeometricPrimitive testSphere2(&test2, &matTest2, identity);
+//
+//    balls.push_back(&testSphere2);
 
-    Color rgbs2(1.0f, 0.0f, 1.0f);
-    Color rgbd2(0.3f, 0.5f, 0.2f);
-    Sphere test2 = Sphere(Eigen::Vector4f(1.0f, 0.0f, -2.5f, 1.0f), 1.0f);
-    Material matTest2;
-    matTest2.specular = rgbs2;
-    matTest2.diffuse = rgbd2;
-    matTest2.specularExponent = 2.0f;
-
-    GeometricPrimitive testSphere2(&test2, &matTest2, identity);
-
-    balls.push_back(&testSphere2);
-
-    PLight source(Color(2.0f, 2.0f, 2.0f), Eigen::Vector4f(200.0f, 0.0f, 155.0f, 1.0f));
+    PLight source(Color(200.0f, 0.0f, 155.0f), Eigen::Vector4f(2.0f, 2.0f, 2.0f, 1.0f));
     plights.push_back(source);
 
-    for (int i = 0; i < width; i++){
-        for (int j = 0; j < height; j++){
-            Ray temp = generateRay(i, j);
+
+
+    for (int i = 0; i < width; i++) {
+
+        for (int j = 0; j < height; j++) {
+            Ray temp = generateRay(i, j, width, height);
             Color result = trace(temp, balls);
             negative.commit(i, j, result.getRed(), result.getGreen(), result.getBlue());
             //FIX ME: currently only supporting one sample per pixel
@@ -290,24 +280,8 @@ int main(int argc, const char * argv[]) {
 
     negative.writeImage();
 
-    //testing random shit
-    /*
-    Vector3f v(1.0f, 2.0f, 3.0f);
-    Vector3f w(0.0f, 1.0f, 2.0f);
-    int dotty = v.dot(w);
-    Vector3f sub = v - w;
-    */
-    // Sphere test(Vector3f(5.0f, 5.0f, 5.0f), 5.0f);
-    // Ray trial(Vector3f(5.0f+3.0f,5.0f+4.1f, 0.0f), Vector3f(0.0f, 0.0f, 1.0f), 1.0f, 300.0f);
-    //int hh = test.hit(trial);
-    // cout << "Dot product: " << hh << endl;
 
 
-
-
-    float num = UL[0];
-    cout << "Dot product: " << num << endl;
-    system("PAUSE");
 
     return 0;
 }

@@ -62,10 +62,10 @@ LocalGeo Sphere::intersect(const Ray& ray) const {
 
 
     float term1 = d.dot(ec) * d.dot(ec);
-    float term2 = d.dot(d) * ec.dot(ec) - radius*radius;
+    float term2 = d.dot(d) * (ec.dot(ec) - radius*radius);
     float discr = term1 - term2;
 
-    float t1 = (-(d.dot(ec)) - sqrt(discr)) / (d.dot(d));
+    float t1 = (-d.dot(ec) - sqrt(discr)) / d.dot(d);
     // float t2 = (-(d.dot(ec)) + sqrt(discr)) / (d.dot(d));
 
 

@@ -162,5 +162,4 @@ Rotation::Rotation(float rx, float ry, float rz) {
     inverseTranspose = matrix.inverse().transpose();
 }
 
-
 #endif
