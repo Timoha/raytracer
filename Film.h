@@ -1,7 +1,6 @@
 #ifndef FILM_H
 #define FILM_H
 
-#include "stdafx.h"
 #include "lodepng.h"
 
 #include <vector>

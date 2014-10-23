@@ -33,11 +33,11 @@ using namespace std;
 
 /************ FROM SCENE CLASS ************/
 
-Eigen::Vector4f eye(0.0, 0.0, 0.0, 1.0);
-Eigen::Vector4f UL(-1.0, 1.0, -1.0, 1.0);
-Eigen::Vector4f UR(1.0, 1.0, -1.0, 1.0);
-Eigen::Vector4f LL(1.0, -1.0, -1.0, 1.0);
-Eigen::Vector4f LR(-1.0, -1.0, -1.0, 1.0);
+Eigen::Vector4f eye(0.0f, 0.0f, 0.0f, 1.0f);
+Eigen::Vector4f UL(-1.0f, 1.0f, -1.0f, 1.0f);
+Eigen::Vector4f UR(1.0f, 1.0f, -1.0f, 1.0f);
+Eigen::Vector4f LL(1.0f, -1.0f, -1.0f, 1.0f);
+Eigen::Vector4f LR(-1.0f, -1.0f, -1.0f, 1.0f);
 Eigen::Vector4f xvec; // horizontal basis vector of focal plane
 Eigen::Vector4f yvec; // vertical basis vector of focal plane
 
@@ -50,26 +50,26 @@ vector<DLight> dlights;
 
 Ray generateRay(float i, float j){
     float focalplane = (UL + (xvec * i + yvec * j) / 100)[2];
-    Eigen::Vector4f pixel_loc = Eigen::Vector4f(UL[0]+xvec[0]*i/100, UL[0]+ yvec[1]*j/100, focalplane, 1.0);
+    Eigen::Vector4f pixel_loc = Eigen::Vector4f(UL[0]+xvec[0]*i/100, UL[0]+ yvec[1]*j/100, focalplane, 1.0f);
     Eigen::Vector4f direction = pixel_loc - eye;
     direction.normalize();
     ///FIX ME
-    return Ray(eye, direction, focalplane, 10000000.0); //MAY NEED TO BE INCREASED
+    return Ray(eye, direction, focalplane, 10000000.0f); //MAY NEED TO BE INCREASED
     //END FIX ME
 }
 
 
 Color trace(Ray ray, const vector<Primitive>& balls){
 
-    float closest_t = 999999999999999999; //FIX ME MAX FLOAT
+    float closest_t = 999999999999999999.0f; //FIX ME MAX FLOAT
     Intersection closestInter;
     bool isPrimitiveHit = false;
     for (int i = 0; i < balls.size(); i++) {
         if (balls[i].isHit(ray)){
             isPrimitiveHit = true;
             Intersection intersect = balls[i].intersect(ray);
-            if (intersect.local->tHit < closest_t){
-                closest_t = intersect.local->tHit;
+            if (intersect.local.tHit < closest_t){
+                closest_t = intersect.local.tHit;
                 closestInter = intersect;
             }
 
@@ -88,10 +88,10 @@ Color trace(Ray ray, const vector<Primitive>& balls){
     Color rgbDiffuse(0.0f, 0.0f, 0.0f);
 
 
-    Eigen::Vector4f surfacepoint = closestInter.local->point;
+    Eigen::Vector4f surfacepoint = closestInter.local.point;
 
     // normal
-    Eigen::Vector4f n = closestInter.local->normal;
+    Eigen::Vector4f n = closestInter.local.normal;
 
     // view
     Eigen::Vector4f v = surfacepoint - eye;
@@ -252,11 +252,11 @@ int main(int argc, const char * argv[]) {
     Film negative(width, height);
     Color rgbs1(1.0f, 1.0f, 1.0f);
     Color rgbd1(0.0f, 0.4f, 0.3f);
-    Sphere test1 = Sphere(Eigen::Vector4f(0.0, 0.0, -2.0, 1.0), 1.0);
+    Sphere test1 = Sphere(Eigen::Vector4f(0.0f, 0.0f, -2.0f, 1.0f), 1.0f);
     Material matTest1;
     matTest1.specular = rgbs1;
     matTest1.diffuse = rgbd1;
-    matTest1.specularExponent = 2.0;
+    matTest1.specularExponent = 2.0f;
 
     Transformation identity;
     GeometricPrimitive testSphere1(&test1, &matTest1, identity);
@@ -265,17 +265,17 @@ int main(int argc, const char * argv[]) {
 
     Color rgbs2(1.0f, 0.0f, 1.0f);
     Color rgbd2(0.3f, 0.5f, 0.2f);
-    Sphere test2 = Sphere(Eigen::Vector4f(1.0f, 0.0f, -2.5f, 1.0), 1.0);
+    Sphere test2 = Sphere(Eigen::Vector4f(1.0f, 0.0f, -2.5f, 1.0f), 1.0f);
     Material matTest2;
     matTest2.specular = rgbs2;
     matTest2.diffuse = rgbd2;
-    matTest2.specularExponent = 2.0;
+    matTest2.specularExponent = 2.0f;
 
     GeometricPrimitive testSphere2(&test2, &matTest2, identity);
 
     balls.push_back(testSphere2);
 
-    PLight source(Color(2.0f, 2.0f, 2.0f), Eigen::Vector4f(200.0, 0.0, 155.0, 1.0));
+    PLight source(Color(2.0f, 2.0f, 2.0f), Eigen::Vector4f(200.0f, 0.0f, 155.0f, 1.0f));
     plights.push_back(source);
 
     for (int i = 0; i < width; i++){

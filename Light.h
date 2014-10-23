@@ -16,7 +16,7 @@ private:
 };
 
 Light::Light() {
-    color = Color(0.0, 0.0, 0.0);
+    color = Color(0.0f, 0.0f, 0.0f);
 }
 
 Light::Light(Color inColor) {
@@ -36,7 +36,7 @@ private:
 };
 
 DLight::DLight() {
-    direction = Eigen::Vector4f(0, 0, 0, 0);
+    direction = Eigen::Vector4f(0.0f, 0.0f, 0.0f, 0.0f);
 }
 
 //Class for point lights
@@ -50,7 +50,7 @@ private:
 };
 
 PLight::PLight(){
-    source = Eigen::Vector4f(0, 0, 0, 1);
+    source = Eigen::Vector4f(0.0f, 0.0f, 0.0f, 1.0f);
 }
 
 #endif

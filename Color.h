@@ -25,9 +25,9 @@ public:
 };
 
 Color::Color() {
-    r = 0.0;
-    g = 0.0;
-    b = 0.0;
+    r = 0.0f;
+    g = 0.0f;
+    b = 0.0f;
 }
 
 Color::Color(float inR, float inG, float inB) {

@@ -11,28 +11,29 @@
 
 using namespace std;
 
+class Primitive;
 
 class Material {
+public:
     Color specular, diffuse;
     float specularExponent;
 };
 
 
+class Intersection {
+public:
+    const Primitive* primitive;
+    LocalGeo local;
+};
+
 class Primitive
 {
 public:
 
-
-    class Intersection {
-    public:
-        Primitive* primitive;
-        LocalGeo* local;
-    };
-
     Primitive() {};
-    virtual const bool isHit(const Ray& ray) = 0;
-    virtual const Intersection intersect(const Ray& ray) = 0;
-    virtual Material* getBRDF() = 0;
+    virtual bool isHit(const Ray& ray) const;
+    virtual Intersection intersect(const Ray& ray) const;
+    virtual Material* getBRDF() const;
 };
 
 
@@ -44,9 +45,9 @@ private:
     Material *material;
 public:
     GeometricPrimitive(Shape* inShape, Material* inMaterial, Transformation inTransform);
-    const bool isHit(const Ray& ray);
-    const Intersection intersect(const Ray& ray);
-    Material* getBRDF() { return material; }
+    bool isHit(const Ray& ray) const;
+    Intersection intersect(const Ray& ray) const;
+    Material* getBRDF() const { return material; }
 };
 
 
@@ -58,15 +59,15 @@ GeometricPrimitive::GeometricPrimitive(Shape *inShape, Material* inMaterial, Tra
 }
 
 
-const bool GeometricPrimitive::isHit(const Ray &ray) {
+bool GeometricPrimitive::isHit(const Ray &ray) const {
     return shape->isHit(ray);
 }
 
 
-const Intersection GeometricPrimitive::intersect(const Ray &ray) {
+Intersection GeometricPrimitive::intersect(const Ray &ray) const {
     Intersection inter;
     inter.primitive = this;
-    inter.local = &(shape->intersect(ray));
+    inter.local = shape->intersect(ray);
     return inter;
 }
 
