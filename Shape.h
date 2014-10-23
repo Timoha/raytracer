@@ -13,8 +13,8 @@ class Shape
 {
 public:
     Shape() {};
-    virtual bool isHit(const Ray& ray) const;
-    virtual LocalGeo intersect(const Ray& ray) const;
+    virtual bool isHit(const Ray& ray) const = 0;
+    virtual LocalGeo intersect(const Ray& ray) const = 0;
 };
 
 

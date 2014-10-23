@@ -7,17 +7,17 @@
 
 #include <iostream>
 
-#include "Film.h"
+//#include "Film.h"
 
 
 
-class Scene {
-public:
-    Film negative;
-    float height;
-    float width;
-    float depth;
-};
+//class Scene {
+//public:
+//    Film negative;
+//    float height;
+//    float width;
+//    float depth;
+//};
 
 
 

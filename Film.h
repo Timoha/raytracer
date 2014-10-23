@@ -26,23 +26,23 @@ using namespace std;
 
 
 class Film {
-public:
-    Film(int width, int height);
-    int width;
-    int height;
+
+private:
+    int width, height;
     vector<unsigned char> image;
+public:
+    Film(int widthIn, int heightIn);
     void writeImage();
     void commit(int x, int y, float r, float g, float b);
 };
 
-Film::Film(int width1, int height1){
-    width = width1;
-    height = height1;
+Film::Film(int widthIn, int heightIn){
+    width = widthIn;
+    height = heightIn;
     image.resize(width * height * 4);
 }
 
-void Film::writeImage()
-{
+void Film::writeImage() {
     //NOTE: this sample will overwrite the file or rayprint.png without warning!
     const char* filename = "rayprint.png";
 
@@ -55,8 +55,7 @@ void Film::writeImage()
 
 
 //saves image to filename given as argument. Warning, this overwrites the file without warning!. at the moment, only one sample per picture
-void Film::commit(int x, int y, float r, float g, float b)
-{
+void Film::commit(int x, int y, float r, float g, float b) {
     image[4 * width * y + 4 * x + 0] = r; //RED
     image[4 * width * y + 4 * x + 1] = g; //GREEN
     image[4 * width * y + 4 * x + 2] = b; //BLUE

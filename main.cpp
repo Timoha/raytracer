@@ -42,7 +42,7 @@ Eigen::Vector4f xvec; // horizontal basis vector of focal plane
 Eigen::Vector4f yvec; // vertical basis vector of focal plane
 
 
-vector<Primitive> balls;
+vector<Primitive*> balls;
 vector<PLight> plights;
 vector<DLight> dlights;
 
@@ -59,15 +59,15 @@ Ray generateRay(float i, float j){
 }
 
 
-Color trace(Ray ray, const vector<Primitive>& balls){
+Color trace(Ray ray, const vector<Primitive*>& balls){
 
     float closest_t = 999999999999999999.0f; //FIX ME MAX FLOAT
     Intersection closestInter;
     bool isPrimitiveHit = false;
     for (int i = 0; i < balls.size(); i++) {
-        if (balls[i].isHit(ray)){
+        if (balls[i]->isHit(ray)){
             isPrimitiveHit = true;
-            Intersection intersect = balls[i].intersect(ray);
+            Intersection intersect = balls[i]->intersect(ray);
             if (intersect.local.tHit < closest_t){
                 closest_t = intersect.local.tHit;
                 closestInter = intersect;
@@ -261,7 +261,7 @@ int main(int argc, const char * argv[]) {
     Transformation identity;
     GeometricPrimitive testSphere1(&test1, &matTest1, identity);
 
-    balls.push_back(testSphere1);
+    balls.push_back(&testSphere1);
 
     Color rgbs2(1.0f, 0.0f, 1.0f);
     Color rgbd2(0.3f, 0.5f, 0.2f);
@@ -273,7 +273,7 @@ int main(int argc, const char * argv[]) {
 
     GeometricPrimitive testSphere2(&test2, &matTest2, identity);
 
-    balls.push_back(testSphere2);
+    balls.push_back(&testSphere2);
 
     PLight source(Color(2.0f, 2.0f, 2.0f), Eigen::Vector4f(200.0f, 0.0f, 155.0f, 1.0f));
     plights.push_back(source);

@@ -29,11 +29,10 @@ public:
 class Primitive
 {
 public:
-
     Primitive() {};
-    virtual bool isHit(const Ray& ray) const;
-    virtual Intersection intersect(const Ray& ray) const;
-    virtual Material* getBRDF() const;
+    virtual bool isHit(const Ray& ray) const = 0;
+    virtual Intersection intersect(const Ray& ray) const = 0;
+    virtual Material* getBRDF() const = 0;
 };
 
 

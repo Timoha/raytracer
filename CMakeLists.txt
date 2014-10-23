@@ -4,17 +4,6 @@ project(Raytracer1)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 include_directories ("${PROJECT_SOURCE_DIR}/eigen")
-include_directories ("${PROJECT_SOURCE_DIR}/lodepng")
-
-IF(OSX)
-   INCLUDE_DIRECTORIES ( /System/Library/Frameworks )
-   FIND_LIBRARY(GLUT_LIBRARY GLUT )
-   FIND_LIBRARY(OpenGL_LIBRARY OpenGL )
-   MARK_AS_ADVANCED (GLUT_LIBRARY
-                     OpenGL_LIBRARY)
-   SET(EXTRA_LIBS ${GLUT_LIBRARY} ${OpenGL_LIBRARY})
-ENDIF (OSX)
-
 
 
 set(SOURCE_FILES main.cpp)
