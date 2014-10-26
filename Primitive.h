@@ -15,9 +15,21 @@ class Primitive;
 
 class Material {
 public:
-    Color specular, diffuse;
+    Material();
+    Color ambient, specular, diffuse, reflective;
     float specularExponent;
 };
+
+
+Material::Material() {
+    Color black(0.0f, 0.0f, 0.0f);
+    ambient = black;
+    specular = black;
+    diffuse = black;
+    reflective = black;
+    specularExponent = 0.0f;
+}
+
 
 
 class Intersection {
@@ -43,14 +55,14 @@ private:
     Shape *shape;
     Material *material;
 public:
-    GeometricPrimitive(Shape* inShape, Material* inMaterial, Transformation inTransform);
+    GeometricPrimitive(Shape* inShape, Material* inMaterial, Transformation& inTransform);
     bool isHit(const Ray& ray) const;
     Intersection intersect(const Ray& ray) const;
     Material* getBRDF() const { return material; }
 };
 
 
-GeometricPrimitive::GeometricPrimitive(Shape *inShape, Material* inMaterial, Transformation inTransform) {
+GeometricPrimitive::GeometricPrimitive(Shape* inShape, Material* inMaterial, Transformation& inTransform) {
     shape = inShape;
     material = inMaterial;
     worldToObj = inTransform;

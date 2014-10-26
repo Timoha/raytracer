@@ -24,9 +24,10 @@ class Sphere : public Shape
 {
 public:
     Sphere();
-    Sphere(Eigen::Vector4f inOrigin, float inRadius);
+    Sphere(const Eigen::Vector4f& inOrigin, float inRadius);
     bool isHit(const Ray& ray) const;
     LocalGeo intersect(const Ray& ray) const;
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 private:
     Eigen::Vector4f origin;
     float radius;
@@ -39,7 +40,7 @@ Sphere::Sphere() {
 }
 
 
-Sphere::Sphere(Eigen::Vector4f inOrigin, float inRadius) {
+Sphere::Sphere(const Eigen::Vector4f& inOrigin, float inRadius) {
     origin = inOrigin;
     radius = inRadius;
 }
@@ -86,8 +87,9 @@ LocalGeo Sphere::intersect(const Ray& ray) const {
 //{
 //public:
 //    Triangle();
-//    Triangle(Eigen::Vector4f inA, Eigen::Vector4f inB, Eigen::Vector4f inC);
+//    Triangle(const Eigen::Vector4f inA, const Eigen::Vector4f& inB, const Eigen::Vector4f& inC);
 //    // include implementation virtual functions for intersection
+//    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 //private:
 //    Eigen::Vector4f a, b, c;
 //};
@@ -101,7 +103,7 @@ LocalGeo Sphere::intersect(const Ray& ray) const {
 //}
 //
 //
-//Triangle::Triangle(Eigen::Vector4f inA, Eigen::Vector4f inB, Eigen::Vector4f inC) {
+//Triangle::Triangle(const Eigen::Vector4f& inA, const Eigen::Vector4f& inB, const Eigen::Vector4f& inC) {
 //    a = inA;
 //    b = inB;
 //    c = inC;

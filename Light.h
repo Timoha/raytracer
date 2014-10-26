@@ -9,7 +9,7 @@
 class Light {
 public:
     Light();
-    Light(Color inColor);
+    Light(const Color& inColor);
     Color getColor() { return color; }
 private:
     Color color;
@@ -19,7 +19,7 @@ Light::Light() {
     color = Color(0.0f, 0.0f, 0.0f);
 }
 
-Light::Light(Color inColor) {
+Light::Light(const Color& inColor) {
     color = inColor;
 }
 
@@ -28,7 +28,7 @@ Light::Light(Color inColor) {
 class DLight : public Light {
 public:
     DLight();
-    DLight(Color inColor, Eigen::Vector4f inDir) : Light(inColor), direction(inDir) {}
+    DLight(const Color& inColor, const Eigen::Vector4f& inDir) : Light(inColor), direction(inDir) {}
     Eigen::Vector4f getDirection() { return direction; }
 
 private:
@@ -43,7 +43,7 @@ DLight::DLight() {
 class PLight : public Light {
 public:
     PLight();
-    PLight(Color inColor, Eigen::Vector4f inSource) : Light(inColor), source(inSource) {}
+    PLight(const Color& inColor, const Eigen::Vector4f& inSource) : Light(inColor), source(inSource) {}
     Eigen::Vector4f getSource() { return source; }
 private:
     Eigen::Vector4f source;

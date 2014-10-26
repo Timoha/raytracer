@@ -25,6 +25,8 @@ public:
     Transformation getInverse();
     void compose(const vector<Transformation> &ts);
 
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
 protected:
     Eigen::Matrix4f matrix, inverseTranspose;
 };
