@@ -43,7 +43,8 @@ DLight::DLight() {
 }
 
 Eigen::Vector4f DLight::getLightVector(const Eigen::Vector4f& surfacePoint) {
-    return direction;
+//    cout << direction.normalized() << ";" << endl;
+    return (-direction).normalized();
 }
 
 ostream& operator<< (ostream &out, DLight &l) {
@@ -55,7 +56,7 @@ ostream& operator<< (ostream &out, DLight &l) {
 class PLight : public Light {
 public:
     PLight();
-    PLight(const Color& inColor, const Eigen::Vector4f& inSource, float inFalloff = 0.0f) : Light(inColor), source(inSource), falloff(inFalloff) {}
+    PLight(const Color& inColor, const Eigen::Vector4f& inSource, float inFalloff) : Light(inColor), source(inSource), falloff(inFalloff) {}
     Eigen::Vector4f getSource() { return source; }
     Eigen::Vector4f getLightVector(const Eigen::Vector4f& surfacePoint);
     friend ostream& operator<< (ostream &out, PLight &l);

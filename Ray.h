@@ -34,6 +34,7 @@ public:
     Eigen::Vector4f point;
     Eigen::Vector4f normal;
     float tHit;
+    bool isHit;
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 

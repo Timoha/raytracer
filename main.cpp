@@ -7,6 +7,7 @@
 #include <iterator>
 #include <vector>
 #include <time.h>
+#include <limits>
 #include <sys/time.h>
 
 #include <Eigen/Dense>
@@ -43,26 +44,25 @@ Material currentMaterial;
 ALight globalAmbient(Color(0.0f, 0.0f, 0.0f));
 
 
-Ray generateRay(float i, float j, int width, int height) {
-    float focalplane = (UL + xvec * i / width + yvec * j / height)[2];
-    Eigen::Vector4f pixel_loc = Eigen::Vector4f(UL[0] + xvec[0] * i / width, UL[0]+ yvec[1]*j/ height, focalplane, 1.0f);
+Ray generateRay(float scaleWidth, float scaleHeight) {
+    float focalplane = (UL + xvec * scaleWidth + yvec * scaleHeight)[2];
+    Eigen::Vector4f pixel_loc = Eigen::Vector4f(UL[0] + xvec[0] * scaleWidth, UL[0]+ yvec[1] * scaleHeight, focalplane, 1.0f);
     Eigen::Vector4f direction = pixel_loc - eye;
     direction.normalize();
-    ///FIX ME
-    return Ray(eye, direction, focalplane, 10000000.0f); //MAY NEED TO BE INCREASED
-    //END FIX ME
+    return Ray(eye, direction, focalplane, numeric_limits<float>::infinity());
 }
 
 
 Color trace(const Ray& ray, const vector<Primitive*>& primitives){
 
-    float closest_t = 999999999999999999.0f; //FIX ME MAX FLOAT
-    Intersection closestInter;
+    float closest_t = numeric_limits<float>::infinity();
+    Intersection closestInter, intersect;
     bool isPrimitiveHit = false;
+
     for (int i = 0; i < primitives.size(); i++) {
-        if (primitives[i]->isHit(ray)){
+        intersect = primitives[i]->intersect(ray);
+        if (intersect.primitive != NULL){
             isPrimitiveHit = true;
-            Intersection intersect = primitives[i]->intersect(ray);
             if (intersect.local.tHit < closest_t){
                 closest_t = intersect.local.tHit;
                 closestInter = intersect;
@@ -76,11 +76,9 @@ Color trace(const Ray& ray, const vector<Primitive*>& primitives){
 
 
     // calculate color
-
     Color rgbSpecular(0.0f, 0.0f, 0.0f);
     Color rgbDiffuse(0.0f, 0.0f, 0.0f);
     Color rgbAmbient(0.0f, 0.0f, 0.0f);
-
 
     Eigen::Vector4f surfacepoint = closestInter.local.point;
 
@@ -98,10 +96,27 @@ Color trace(const Ray& ray, const vector<Primitive*>& primitives){
 
     for (int i = 0; i < lights.size(); i++){
 
-        Color lightColor = lights[i]->getColor();
-
         // light
         Eigen::Vector4f l = lights[i]->getLightVector(surfacepoint);
+
+        Color lightColor = lights[i]->getColor();
+        rgbAmbient = rgbAmbient + lightColor;
+
+        // shadows
+        bool isShadowHit = false;
+        Ray shadowRay(surfacepoint, l, 0.0f, numeric_limits<float>::infinity());
+        for (int x = 0; x < primitives.size(); x++){
+            intersect = primitives[x]->intersect(shadowRay);
+            bool isHit = intersect.primitive != NULL;
+            if (closestInter.primitive != intersect.primitive && isHit && intersect.local.tHit > shadowRay.t_min){
+                isShadowHit = true;
+                break;
+            }
+        }
+
+        if (isShadowHit) {
+            break;
+        }
 
         // reflected
         Eigen::Vector4f r = l - 2 * l.dot(n) * n;
@@ -113,26 +128,23 @@ Color trace(const Ray& ray, const vector<Primitive*>& primitives){
         if (specularDot > 0.0f) {
             scaleSpecular = powf(specularDot, primitiveBRDF.specularExponent);
             rgbSpecular = rgbSpecular + lightColor * scaleSpecular;
-
         }
 
         if (diffuseDot > 0.0f) {
             rgbDiffuse = rgbDiffuse + lightColor * diffuseDot;
         }
-
-        rgbAmbient = rgbAmbient + lightColor;
     }
 
     rgbAmbient = (rgbAmbient + globalAmbient.getColor()) * primitiveBRDF.ambient;
     rgbDiffuse = rgbDiffuse * primitiveBRDF.diffuse ;
     rgbSpecular = rgbSpecular * primitiveBRDF.specular;
 
-    return (rgbDiffuse + rgbSpecular + rgbAmbient)* 255.0f;
+    return rgbDiffuse + rgbSpecular + rgbAmbient;
 }
 
 
 
-void checkNumArguments(const vector<string> & args, int min) {
+void checkNumArguments(const vector<string>& args, int min) {
     int n = args.size() - 1;
     if (n < min) {
         throw invalid_argument("Invalid number of arguments for command: " + args[0]);
@@ -179,7 +191,7 @@ void parseLine(const string& line) {
         lights.push_back(pointLight);
     } else if (tokens[0] == "ltd") {
         checkNumArguments(tokens, 6);
-        Eigen::Vector4f* source = new Eigen::Vector4f(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()), 1.0f);
+        Eigen::Vector4f* source = new Eigen::Vector4f(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()), 0.0f);
         DLight* dirLight = new DLight(Color(atof(tokens[4].c_str()), atof(tokens[5].c_str()), atof(tokens[6].c_str())), *source);
         lights.push_back(dirLight);
     } else if (tokens[0] == "lta") {
@@ -219,7 +231,6 @@ void parseLine(const string& line) {
     } else {
         throw invalid_argument("Unrecognized command: " + tokens[0]);
     }
-
 }
 
 
@@ -279,29 +290,6 @@ int main(int argc, const char * argv[]) {
         cout << "Invalid argument." << endl;
     }
 
-    cout << "Lights size: " << lights.size() << endl;
-    cout << "Primitives size: " << primitives.size() << endl;
-
-    cout << "Primitives materials: " << endl;
-    for (int i = 0; i < primitives.size(); i++) {
-        Material curr = primitives[i]->getBRDF();
-        cout << i << ": " << curr << endl;
-    }
-    cout << "--------------------\n" << endl;
-
-    cout << "Lights: " << endl;
-    for (int i = 0; i < lights.size(); i++) {
-        Color curr = lights[i]->getColor();
-        cout << i << ": " << curr << endl;
-    }
-    cout << "--------------------\n" << endl;
-
-    cout << "Eye " << eye << endl;
-    cout << "UR " << UR << endl;
-    cout << "UL " << UL << endl;
-    cout << "LL " << LL << endl;
-    cout << "LR " << LR << endl;
-
     int height = 500;
     int width = 500;
 
@@ -312,7 +300,7 @@ int main(int argc, const char * argv[]) {
 
     int pixelCount = 0;
     int fraction = width * height / 10;
-    float totalPixelsScale = (float) 100.0/(width * height);
+    float totalPixelsScale = (float) 100.0 / (width * height);
 
     timestamp_t t0 = get_timestamp();
 
@@ -323,8 +311,8 @@ int main(int argc, const char * argv[]) {
                 cout << (int) (pixelCount * totalPixelsScale) << "%" << endl;
             }
 
-            Ray temp = generateRay(i, j, width, height);
-            Color result = trace(temp, primitives);
+            Ray temp = generateRay((float) i / width, (float) j / height);
+            Color result = trace(temp, primitives) * 255.0f;
             negative.commit(i, height - j - 1, fmin(result.getRed(), 255.0f), fmin(result.getGreen(), 255.0f), fmin(result.getBlue(), 255.0f));
             //FIX ME: currently only supporting one sample per pixel
             //negative.commit(i, j, 255*i/width, 255*j/height, 200) activate this for pretty colors

@@ -86,8 +86,16 @@ bool GeometricPrimitive::isHit(const Ray &ray) const {
 
 Intersection GeometricPrimitive::intersect(const Ray &ray) const {
     Intersection inter;
-    inter.primitive = this;
-    inter.local = shape->intersect(ray);
+
+    LocalGeo geo = shape->intersect(ray);
+    inter.local = geo;
+
+    if (geo.isHit) {
+        inter.primitive = this;
+    } else {
+        inter.primitive = NULL;
+    }
+
     return inter;
 }
 
