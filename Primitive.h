@@ -18,6 +18,8 @@ public:
     Material();
     Color ambient, specular, diffuse, reflective;
     float specularExponent;
+
+    friend ostream& operator<< (ostream &out, Material &m);
 };
 
 
@@ -28,6 +30,13 @@ Material::Material() {
     diffuse = black;
     reflective = black;
     specularExponent = 0.0f;
+}
+
+ostream& operator<< (ostream &out, Material &m) {
+    out << "Ambient " << m.ambient << ", Diffuse " << m.diffuse;
+    out << ", Specular " << m.specular << ", Exponent " << m.specularExponent;
+    out << ", Reflective " << m.reflective;
+    return out;
 }
 
 
@@ -44,7 +53,7 @@ public:
     Primitive() {};
     virtual bool isHit(const Ray& ray) const = 0;
     virtual Intersection intersect(const Ray& ray) const = 0;
-    virtual Material* getBRDF() const = 0;
+    virtual Material getBRDF() const = 0;
 };
 
 
@@ -53,16 +62,16 @@ class GeometricPrimitive : public Primitive
 private:
     Transformation objToWorld, worldToObj;
     Shape *shape;
-    Material *material;
+    Material material;
 public:
-    GeometricPrimitive(Shape* inShape, Material* inMaterial, Transformation& inTransform);
+    GeometricPrimitive(Shape* inShape, Material inMaterial, Transformation& inTransform);
     bool isHit(const Ray& ray) const;
     Intersection intersect(const Ray& ray) const;
-    Material* getBRDF() const { return material; }
+    Material getBRDF() const { return material; }
 };
 
 
-GeometricPrimitive::GeometricPrimitive(Shape* inShape, Material* inMaterial, Transformation& inTransform) {
+GeometricPrimitive::GeometricPrimitive(Shape* inShape, Material inMaterial, Transformation& inTransform) {
     shape = inShape;
     material = inMaterial;
     worldToObj = inTransform;
