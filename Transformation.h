@@ -5,6 +5,8 @@
 #include <iostream>
 
 #include <Eigen/Dense>
+#include <Eigen/StdVector>
+#include "Ray.h"
 
 
 #define PI 3.14159265
@@ -19,11 +21,11 @@ public:
     Transformation& operator=(const Transformation &rhs);
     friend ostream& operator<< (ostream &out, Transformation &t);
     friend Transformation operator* (const Transformation& x, const Transformation& y);
-    friend Eigen::Vector4f operator* (const Transformation& x, const Eigen::Vector4f& y);
-    friend Eigen::Vector4f operator* (const Eigen::Vector4f& x, const Transformation& y);
+    friend Ray operator* (const Transformation& x, const Ray& y);
+    friend LocalGeo operator* (const Transformation& x, const LocalGeo& y);
 
-    Transformation getInverse();
-    void compose(const vector<Transformation> &ts);
+    Transformation* getInverse() const;
+    Transformation* compose(const vector<Transformation*, Eigen::aligned_allocator<Transformation*> > &ts);
 
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
@@ -70,31 +72,36 @@ Transformation operator* (const Transformation& x, const Transformation& y) {
     return temp;
 }
 
-Eigen::Vector4f operator* (const Transformation& x, const Eigen::Vector4f& y) {
-    return x.matrix * y;
-}
-
-
-Eigen::Vector4f operator* (const Eigen::Vector4f& x, const Transformation& y) {
-    return y * x;
-}
-
-
-Transformation Transformation::getInverse() {
-    Transformation temp;
-    temp.matrix = (this->matrix).inverse();
-    temp.inverseTranspose = (this->inverseTranspose).inverse(); // ? Not sure ??
+Ray operator* (const Transformation& x, const Ray& y) {
+    Ray temp = y;
+    temp.direction = x.matrix * y.direction;
     return temp;
 }
 
 
-void Transformation::compose(const vector<Transformation> &ts) {
-    Transformation final;
-    for (unsigned i = ts.size(); i-- > 0; ) {
-        final = final * ts[i];
+LocalGeo operator* (const Transformation& x, const LocalGeo& y) {
+    LocalGeo temp = y;
+    temp.normal = x.inverseTranspose * y.normal;
+    return temp;
+}
+
+
+Transformation* Transformation::getInverse() const {
+    Transformation* temp = new Transformation();
+    temp->matrix = (this->matrix).inverse();
+    temp->inverseTranspose = (this->inverseTranspose).inverse(); // ? Not sure ??
+    return temp;
+}
+
+
+Transformation* Transformation::compose(const vector<Transformation*, Eigen::aligned_allocator<Transformation*> > &ts) {
+    Transformation* final = new Transformation();
+    //for (unsigned i = ts.size(); i-- > 0; ) {
+    for (unsigned i = 0; i < ts.size(); i++ ) {
+            *final = *final * *ts[i];
     }
 
-    *this = final;
+    return final;
 }
 
 
@@ -102,7 +109,7 @@ class Scaling : public Transformation
 {
 public:
     Scaling(float sx, float sy, float sz);
-
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 
 Scaling::Scaling(float sx, float sy, float sz) {
@@ -118,7 +125,7 @@ class Translation : public Transformation
 {
 public:
     Translation(float tx, float ty, float tz);
-
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 
 Translation::Translation(float tx, float ty, float tz) {
@@ -134,6 +141,7 @@ class Rotation : public Transformation
 {
 public:
     Rotation(float rx, float ry, float rz);
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 
 

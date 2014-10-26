@@ -42,6 +42,7 @@ DLight::DLight() {
     direction = Eigen::Vector4f(0.0f, 0.0f, 0.0f, 0.0f);
 }
 
+
 Eigen::Vector4f DLight::getLightVector(const Eigen::Vector4f& surfacePoint) {
 //    cout << direction.normalized() << ";" << endl;
     return (-direction).normalized();
@@ -70,6 +71,7 @@ PLight::PLight(){
     source = Eigen::Vector4f(0.0f, 0.0f, 0.0f, 1.0f);
     falloff = 0.0f;
 }
+
 
 Eigen::Vector4f PLight::getLightVector(const Eigen::Vector4f& surfacePoint) {
     return (source - surfacePoint).normalized();

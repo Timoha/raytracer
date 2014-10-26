@@ -51,31 +51,42 @@ class Primitive
 {
 public:
     Primitive() {};
+    virtual ~Primitive() = 0;
     virtual bool isHit(const Ray& ray) const = 0;
     virtual Intersection intersect(const Ray& ray) const = 0;
     virtual Material getBRDF() const = 0;
 };
 
+inline Primitive::~Primitive() { }
+
 
 class GeometricPrimitive : public Primitive
 {
 private:
-    Transformation objToWorld, worldToObj;
+    Transformation *objToWorld, *worldToObj;
     Shape *shape;
     Material material;
 public:
-    GeometricPrimitive(Shape* inShape, Material inMaterial, Transformation& inTransform);
+    GeometricPrimitive(Shape* inShape, Material inMaterial, Transformation* inTransform);
+    ~GeometricPrimitive();
     bool isHit(const Ray& ray) const;
     Intersection intersect(const Ray& ray) const;
     Material getBRDF() const { return material; }
 };
 
 
-GeometricPrimitive::GeometricPrimitive(Shape* inShape, Material inMaterial, Transformation& inTransform) {
+GeometricPrimitive::GeometricPrimitive(Shape* inShape, Material inMaterial, Transformation* inTransform) {
     shape = inShape;
     material = inMaterial;
     worldToObj = inTransform;
-    objToWorld = inTransform.getInverse();
+    objToWorld = inTransform->getInverse();
+}
+
+
+GeometricPrimitive::~GeometricPrimitive() {
+    delete shape;
+    delete worldToObj;
+    delete objToWorld;
 }
 
 
@@ -86,9 +97,10 @@ bool GeometricPrimitive::isHit(const Ray &ray) const {
 
 Intersection GeometricPrimitive::intersect(const Ray &ray) const {
     Intersection inter;
+    Ray objRay = *worldToObj * ray;
 
-    LocalGeo geo = shape->intersect(ray);
-    inter.local = geo;
+    LocalGeo geo = shape->intersect(objRay);
+    inter.local = *objToWorld * geo;
 
     if (geo.isHit) {
         inter.primitive = this;

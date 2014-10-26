@@ -13,9 +13,14 @@ class Shape
 {
 public:
     Shape() {};
+    virtual ~Shape() = 0;
     virtual bool isHit(const Ray& ray) const = 0;
     virtual LocalGeo intersect(const Ray& ray) const = 0;
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
+
+
+inline Shape::~Shape() { }
 
 
 
@@ -25,6 +30,7 @@ class Sphere : public Shape
 public:
     Sphere();
     Sphere(const Eigen::Vector4f& inOrigin, float inRadius);
+    ~Sphere();
     bool isHit(const Ray& ray) const;
     LocalGeo intersect(const Ray& ray) const;
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -32,6 +38,9 @@ private:
     Eigen::Vector4f origin;
     float radius;
 };
+
+Sphere::~Sphere() {
+}
 
 
 Sphere::Sphere() {

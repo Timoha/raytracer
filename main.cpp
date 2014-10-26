@@ -11,6 +11,7 @@
 #include <sys/time.h>
 
 #include <Eigen/Dense>
+#include <Eigen/StdVector>
 
 
 #include "Transformation.h"
@@ -36,9 +37,9 @@ Eigen::Vector4f xvec; // horizontal basis vector of focal plane
 Eigen::Vector4f yvec; // vertical basis vector of focal plane
 
 
-vector<Primitive*> primitives;
-vector<Transformation> transforms;
-vector<Light*> lights;
+vector<Primitive*, Eigen::aligned_allocator<Primitive*> > primitives;
+vector<Transformation*, Eigen::aligned_allocator<Transformation*> > transforms;
+vector<Light*, Eigen::aligned_allocator<Light*> > lights;
 
 Material currentMaterial;
 ALight globalAmbient(Color(0.0f, 0.0f, 0.0f));
@@ -53,7 +54,7 @@ Ray generateRay(float scaleWidth, float scaleHeight) {
 }
 
 
-Color trace(const Ray& ray, const vector<Primitive*>& primitives){
+Color trace(const Ray& ray, const vector<Primitive*, Eigen::aligned_allocator<Primitive*> >& primitives){
 
     float closest_t = numeric_limits<float>::infinity();
     Intersection closestInter, intersect;
@@ -167,11 +168,12 @@ void parseLine(const string& line) {
         UR = Eigen::Vector4f(atof(tokens[13].c_str()), atof(tokens[14].c_str()), atof(tokens[15].c_str()), 1.0f);
     } else if (tokens[0] == "sph") {
         checkNumArguments(tokens, 4);
-        Transformation currentTransform;
-        currentTransform.compose(transforms);
+        Transformation* currentTransform = new Transformation();
+        currentTransform = currentTransform->compose(transforms);
 
         Sphere* sphere = new Sphere(Eigen::Vector4f(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()), 1.0f), atof(tokens[4].c_str()));
 
+        cout << *currentTransform << endl;
         GeometricPrimitive *spherePrim = new GeometricPrimitive(sphere, currentMaterial, currentTransform);
         primitives.push_back(spherePrim);
 
@@ -207,27 +209,20 @@ void parseLine(const string& line) {
     } else if (tokens[0] == "xft") {
         cout << "xft" << endl;
         checkNumArguments(tokens, 3);
-        transforms.push_back(Translation(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str())));
-        test.compose(transforms);
-        cout << test << endl;
+        transforms.push_back(new Translation(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str())));
     } else if (tokens[0] == "xfr") {
         cout << "xfr" << endl;
         checkNumArguments(tokens, 3);
-        transforms.push_back(Rotation(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str())));
-        test.compose(transforms);
+        transforms.push_back(new Rotation(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str())));
         cout << test << endl;
     } else if (tokens[0] == "xfs") {
         cout << "xfs" << endl;
         checkNumArguments(tokens, 3);
-        transforms.push_back(Rotation(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str())));
-        test.compose(transforms);
-        cout << test << endl;
+        transforms.push_back(new Scaling(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str())));
     } else if (tokens[0] == "xfz") {
         cout << "xfz" << endl;
         checkNumArguments(tokens, 0);
         transforms.clear();
-        test.compose(transforms);
-        cout << test << endl;
     } else {
         throw invalid_argument("Unrecognized command: " + tokens[0]);
     }
@@ -290,11 +285,12 @@ int main(int argc, const char * argv[]) {
         cout << "Invalid argument." << endl;
     }
 
-    int height = 500;
-    int width = 500;
+    int height = 1000;
+    int width = 1000;
 
     xvec = UR - UL;
     yvec = UL - LL;
+
 
     Film negative(width, height);
 
