@@ -62,7 +62,7 @@ Color trace(const Ray& ray, const vector<Primitive*, Eigen::aligned_allocator<Pr
 
     for (int i = 0; i < primitives.size(); i++) {
         intersect = primitives[i]->intersect(ray);
-        if (intersect.primitive != NULL){
+        if (intersect.local.isHit){
             isPrimitiveHit = true;
             if (intersect.local.tHit < closest_t){
                 closest_t = intersect.local.tHit;
@@ -106,7 +106,7 @@ Color trace(const Ray& ray, const vector<Primitive*, Eigen::aligned_allocator<Pr
         // shadows
         bool isShadowHit = false;
         Ray shadowRay(surfacepoint, l, 0.0f, numeric_limits<float>::infinity());
-        for (int x = 0; x < primitives.size(); x++){
+        for (int x = 0; x < primitives.size(); x++) {
             intersect = primitives[x]->intersect(shadowRay);
             bool isHit = intersect.primitive != NULL;
             if (closestInter.primitive != intersect.primitive && isHit && intersect.local.tHit > shadowRay.t_min){
@@ -157,8 +157,6 @@ void parseLine(const string& line) {
     istringstream iss(line);
     vector<string> tokens((istream_iterator<string>(iss)), istream_iterator<string>());
 
-    Transformation test;
-
     if (tokens[0] == "cam") {
         checkNumArguments(tokens, 15);
         eye = Eigen::Vector4f(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()), 1.0f);
@@ -173,7 +171,6 @@ void parseLine(const string& line) {
 
         Sphere* sphere = new Sphere(Eigen::Vector4f(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()), 1.0f), atof(tokens[4].c_str()));
 
-        cout << *currentTransform << endl;
         GeometricPrimitive *spherePrim = new GeometricPrimitive(sphere, currentMaterial, currentTransform);
         primitives.push_back(spherePrim);
 
@@ -207,20 +204,15 @@ void parseLine(const string& line) {
         currentMaterial.specularExponent = atof(tokens[10].c_str());
         currentMaterial.reflective = Color(atof(tokens[11].c_str()), atof(tokens[12].c_str()), atof(tokens[13].c_str()));
     } else if (tokens[0] == "xft") {
-        cout << "xft" << endl;
         checkNumArguments(tokens, 3);
         transforms.push_back(new Translation(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str())));
     } else if (tokens[0] == "xfr") {
-        cout << "xfr" << endl;
         checkNumArguments(tokens, 3);
         transforms.push_back(new Rotation(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str())));
-        cout << test << endl;
     } else if (tokens[0] == "xfs") {
-        cout << "xfs" << endl;
         checkNumArguments(tokens, 3);
         transforms.push_back(new Scaling(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str())));
     } else if (tokens[0] == "xfz") {
-        cout << "xfz" << endl;
         checkNumArguments(tokens, 0);
         transforms.clear();
     } else {

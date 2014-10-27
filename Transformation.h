@@ -24,24 +24,22 @@ public:
     friend Ray operator* (const Transformation& x, const Ray& y);
     friend LocalGeo operator* (const Transformation& x, const LocalGeo& y);
 
-    Transformation* getInverse() const;
+    virtual Transformation* getInverse() const;
     Transformation* compose(const vector<Transformation*, Eigen::aligned_allocator<Transformation*> > &ts);
 
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
 protected:
-    Eigen::Matrix4f matrix, inverseTranspose;
+    Eigen::Matrix4f matrix;
 };
 
 
 Transformation::Transformation() {
     matrix = Eigen::Matrix4f::Identity();
-    inverseTranspose = Eigen::Matrix4f::Identity();
 }
 
 Transformation::Transformation(const Transformation &rhs) {
     matrix = rhs.matrix;
-    inverseTranspose = rhs.inverseTranspose;
 }
 
 Transformation& Transformation::operator=(const Transformation &rhs) {
@@ -50,38 +48,39 @@ Transformation& Transformation::operator=(const Transformation &rhs) {
     }
 
     matrix = rhs.matrix;
-    inverseTranspose = rhs.inverseTranspose;
     return *this;
 }
 
 
 ostream& operator<< (ostream &out, Transformation &t) {
     out << "Matrix: " << endl;
-    out << t.matrix << endl;
-    out << "Inverse Transpose" << endl;
-    out << t.inverseTranspose << endl;
+    out << t.matrix;
     return out;
 }
 
 Transformation operator* (const Transformation& x, const Transformation& y) {
     Transformation temp;
-
     temp.matrix = x.matrix * y.matrix;
-    temp.inverseTranspose = x.inverseTranspose * y.inverseTranspose;
-
     return temp;
 }
 
 Ray operator* (const Transformation& x, const Ray& y) {
     Ray temp = y;
-    temp.direction = x.matrix * y.direction;
+    temp.direction = (x.matrix * y.direction).normalized();
+    temp.source = x.matrix * y.source;
     return temp;
 }
 
 
 LocalGeo operator* (const Transformation& x, const LocalGeo& y) {
     LocalGeo temp = y;
-    temp.normal = x.inverseTranspose * y.normal;
+    if (y.isHit) {
+        temp.normal = x.matrix * y.normal; // transpose is not needed for some reason?
+        temp.normal[3] = 0.0f;
+        temp.normal.normalize();
+        temp.point = x.matrix * y.point;
+    }
+
     return temp;
 }
 
@@ -89,16 +88,14 @@ LocalGeo operator* (const Transformation& x, const LocalGeo& y) {
 Transformation* Transformation::getInverse() const {
     Transformation* temp = new Transformation();
     temp->matrix = (this->matrix).inverse();
-    temp->inverseTranspose = (this->inverseTranspose).inverse(); // ? Not sure ??
     return temp;
 }
 
 
 Transformation* Transformation::compose(const vector<Transformation*, Eigen::aligned_allocator<Transformation*> > &ts) {
     Transformation* final = new Transformation();
-    //for (unsigned i = ts.size(); i-- > 0; ) {
     for (unsigned i = 0; i < ts.size(); i++ ) {
-            *final = *final * *ts[i];
+        final->matrix = final->matrix * ts[i]->matrix;
     }
 
     return final;
@@ -113,11 +110,10 @@ public:
 };
 
 Scaling::Scaling(float sx, float sy, float sz) {
-    matrix << sx, 0, 0, 0,
-              0, sy, 0, 0,
-              0, 0, sz, 0,
-              0, 0, 0,  1;
-    inverseTranspose = matrix.inverse().transpose();
+    matrix << sx, 0.0f, 0.0f, 0.0f,
+              0.0f, sy, 0.0f, 0.0f,
+              0.0f, 0.0f, sz, 0.0f,
+              0.0f, 0.0f, 0.0f, 1.0f;
 }
 
 
@@ -128,12 +124,12 @@ public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 
+
 Translation::Translation(float tx, float ty, float tz) {
-    matrix << 1, 0, 0, tx,
-              0, 1, 0, ty,
-              0, 0, 1, tz,
-              0, 0, 0, 1;
-    inverseTranspose = matrix.inverse().transpose();
+    matrix << 1.0f, 0.0f, 0.0f, tx,
+              0.0f, 1.0f, 0.0f, ty,
+              0.0f, 0.0f, 1.0f, tz,
+              0.0f, 0.0f, 0.0f, 1.0f;
 }
 
 
@@ -147,29 +143,24 @@ public:
 
 
 Rotation::Rotation(float rx, float ry, float rz) {
-    Eigen::Vector3d k(rx, ry, rz);
+    Eigen::Vector3f k(rx, ry, rz);
     float theta = k.norm();
     k.normalize();
 
 
-    Eigen::Matrix3f ux;
-    ux << 0, -k[2], k[1],
-          k[2], 0, -k[0],
-          -k[1], k[0], 0;
+    Eigen::Matrix4f ux;
+    ux << 0.0f, -k[2], k[1], 0.0f,
+          k[2], 0.0f, -k[0], 0.0f,
+          -k[1], k[0], 0.0f, 0.0f,
+          0.0f, 0.0f, 0.0f, 1.0f;
 
 
-    Eigen::Matrix3f I = Eigen::Matrix3f::Identity();
+    Eigen::Matrix4f I = Eigen::Matrix4f::Identity();
 
     float angle = theta*PI/180;
 
-    Eigen::MatrixXf r = I + ux * sin(angle) + ux * ux * (1 - cos(angle));
-    r.conservativeResize(4, 4);
-
-    r(3, 3) = 1;
-
-    matrix = r;
-
-    inverseTranspose = matrix.inverse().transpose();
+    matrix = I + ux * sin(angle) + ux * ux * (1 - cos(angle));
+    matrix(3, 3) = 1.0f;
 }
 
 #endif

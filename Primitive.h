@@ -78,8 +78,8 @@ public:
 GeometricPrimitive::GeometricPrimitive(Shape* inShape, Material inMaterial, Transformation* inTransform) {
     shape = inShape;
     material = inMaterial;
-    worldToObj = inTransform;
-    objToWorld = inTransform->getInverse();
+    worldToObj = inTransform->getInverse();
+    objToWorld = inTransform;
 }
 
 
@@ -99,8 +99,8 @@ Intersection GeometricPrimitive::intersect(const Ray &ray) const {
     Intersection inter;
     Ray objRay = *worldToObj * ray;
 
-    LocalGeo geo = shape->intersect(objRay);
-    inter.local = *objToWorld * geo;
+    LocalGeo geo = *objToWorld * shape->intersect(objRay);
+    inter.local = geo;
 
     if (geo.isHit) {
         inter.primitive = this;

@@ -7,5 +7,6 @@ xfs 25 25 25
 sph 0 0 0 1
 xfz
 xft 30 0 -50
-xfs 25 25 25
+xfr 0 0 45
+xfs 25 15 25
 sph 0 0 0 1

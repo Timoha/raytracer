@@ -68,6 +68,7 @@ bool Sphere::isHit(const Ray& r) const {
 
 LocalGeo Sphere::intersect(const Ray& ray) const {
     Eigen::Vector4f d = ray.direction;
+    d.normalize();
     Eigen::Vector4f ec = ray.source - origin;
 
     LocalGeo local;
@@ -85,14 +86,13 @@ LocalGeo Sphere::intersect(const Ray& ray) const {
         local.tHit = 0.0f;
     } else {
         float t1 = (-b - sqrt(discr)) / dItself;
-        local.point = ray.source + t1 * d;
-        local.normal = (local.point - origin).normalized();
+        local.point = ray.source + t1 * ray.direction;
+        local.normal = local.point - origin;
         local.tHit = t1;
         local.isHit = true;
     }
 
-    // float t2 = (-(d.dot(ec)) + sqrt(discr)) / (d.dot(d));
-
+//    float t2 = (-(d.dot(ec)) + sqrt(discr)) / (d.dot(d));
     return local;
 }
 
