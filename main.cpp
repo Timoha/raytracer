@@ -175,11 +175,20 @@ void parseLine(const string& line) {
 
         Sphere* sphere = new Sphere(Eigen::Vector4f(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()), 1.0f), atof(tokens[4].c_str()));
 
-        GeometricPrimitive *spherePrim = new GeometricPrimitive(sphere, currentMaterial, currentTransform);
-        primitives.push_back(spherePrim);
+        primitives.push_back(new GeometricPrimitive(sphere, currentMaterial, currentTransform));
 
     } else if (tokens[0] == "tri") {
         checkNumArguments(tokens, 9);
+        Transformation* currentTransform = new Transformation();
+        currentTransform = currentTransform->compose(transforms);
+        Eigen::Vector3f a(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()));
+        Eigen::Vector3f b(atof(tokens[4].c_str()), atof(tokens[5].c_str()), atof(tokens[6].c_str()));
+        Eigen::Vector3f c(atof(tokens[7].c_str()), atof(tokens[8].c_str()), atof(tokens[9].c_str()));
+
+        Triangle* triangle = new Triangle(a, b, c);
+
+        primitives.push_back(new GeometricPrimitive(triangle, currentMaterial, currentTransform));
+
     } else if (tokens[0] == "obj") {
         checkNumArguments(tokens, 1);
     } else if (tokens[0] == "ltp") {

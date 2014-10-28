@@ -72,7 +72,7 @@ Transformation operator* (const Transformation& x, const Transformation& y) {
 
 Ray operator* (const Transformation& x, const Ray& y) {
     Ray temp = y;
-    temp.direction = (x.matrix * y.direction).normalized();
+    temp.direction = x.matrix * y.direction;
     temp.source = x.matrix * y.source;
     return temp;
 }
