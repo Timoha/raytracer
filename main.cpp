@@ -157,6 +157,10 @@ void parseLine(const string& line) {
     istringstream iss(line);
     vector<string> tokens((istream_iterator<string>(iss)), istream_iterator<string>());
 
+    if (tokens.size() == 0) {
+        return;
+    }
+
     if (tokens[0] == "cam") {
         checkNumArguments(tokens, 15);
         eye = Eigen::Vector4f(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()), 1.0f);
@@ -260,6 +264,7 @@ int main(int argc, const char * argv[]) {
         fin.open(argv[1]);
 
         if (!fin.good()) {
+            cout << "File \"" << argv[1] << "\" does not exists" << endl;
             return 1;
         }
 

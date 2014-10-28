@@ -30,16 +30,18 @@ public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
 protected:
-    Eigen::Matrix4f matrix;
+    Eigen::Matrix4f matrix, inverseTranspose;
 };
 
 
 Transformation::Transformation() {
     matrix = Eigen::Matrix4f::Identity();
+    inverseTranspose = Eigen::Matrix4f::Identity();
 }
 
 Transformation::Transformation(const Transformation &rhs) {
     matrix = rhs.matrix;
+    inverseTranspose = rhs.inverseTranspose;
 }
 
 Transformation& Transformation::operator=(const Transformation &rhs) {
@@ -48,6 +50,7 @@ Transformation& Transformation::operator=(const Transformation &rhs) {
     }
 
     matrix = rhs.matrix;
+    inverseTranspose = rhs.inverseTranspose;
     return *this;
 }
 
@@ -55,12 +58,15 @@ Transformation& Transformation::operator=(const Transformation &rhs) {
 ostream& operator<< (ostream &out, Transformation &t) {
     out << "Matrix: " << endl;
     out << t.matrix;
+    out << "Inverse Transpose: " << endl;
+    out << t.inverseTranspose;
     return out;
 }
 
 Transformation operator* (const Transformation& x, const Transformation& y) {
     Transformation temp;
     temp.matrix = x.matrix * y.matrix;
+    temp.inverseTranspose =  x.inverseTranspose * y.inverseTranspose;
     return temp;
 }
 
@@ -75,19 +81,19 @@ Ray operator* (const Transformation& x, const Ray& y) {
 LocalGeo operator* (const Transformation& x, const LocalGeo& y) {
     LocalGeo temp = y;
     if (y.isHit) {
-        temp.normal = x.matrix * y.normal; // transpose is not needed for some reason?
+        temp.normal = x.inverseTranspose * y.normal;
         temp.normal[3] = 0.0f;
         temp.normal.normalize();
         temp.point = x.matrix * y.point;
     }
-
     return temp;
 }
 
 
 Transformation* Transformation::getInverse() const {
     Transformation* temp = new Transformation();
-    temp->matrix = (this->matrix).inverse();
+    temp->matrix = (this->inverseTranspose).transpose();
+    temp->inverseTranspose = (this->matrix).transpose();
     return temp;
 }
 
@@ -95,7 +101,7 @@ Transformation* Transformation::getInverse() const {
 Transformation* Transformation::compose(const vector<Transformation*, Eigen::aligned_allocator<Transformation*> > &ts) {
     Transformation* final = new Transformation();
     for (unsigned i = 0; i < ts.size(); i++ ) {
-        final->matrix = final->matrix * ts[i]->matrix;
+        *final = *final * *ts[i];
     }
 
     return final;
@@ -114,6 +120,7 @@ Scaling::Scaling(float sx, float sy, float sz) {
               0.0f, sy, 0.0f, 0.0f,
               0.0f, 0.0f, sz, 0.0f,
               0.0f, 0.0f, 0.0f, 1.0f;
+    inverseTranspose = matrix.inverse().transpose();
 }
 
 
@@ -130,6 +137,7 @@ Translation::Translation(float tx, float ty, float tz) {
               0.0f, 1.0f, 0.0f, ty,
               0.0f, 0.0f, 1.0f, tz,
               0.0f, 0.0f, 0.0f, 1.0f;
+    inverseTranspose = matrix.inverse().transpose();
 }
 
 
@@ -161,6 +169,7 @@ Rotation::Rotation(float rx, float ry, float rz) {
 
     matrix = I + ux * sin(angle) + ux * ux * (1 - cos(angle));
     matrix(3, 3) = 1.0f;
+    inverseTranspose = matrix.inverse().transpose();
 }
 
 #endif
