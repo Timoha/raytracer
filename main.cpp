@@ -2,9 +2,7 @@
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
-#include <sstream>
 #include <algorithm>
-#include <iterator>
 #include <vector>
 #include <time.h>
 #include <limits>
@@ -12,6 +10,7 @@
 
 #include <Eigen/Dense>
 #include <Eigen/StdVector>
+#include <Python/Python.h>
 
 
 #include "Transformation.h"
@@ -22,6 +21,7 @@
 #include "Film.h"
 #include "Scene.h"
 #include "Ray.h"
+#include "ObjParser.h"
 
 
 using namespace std;
@@ -37,9 +37,9 @@ Eigen::Vector4f xvec; // horizontal basis vector of focal plane
 Eigen::Vector4f yvec; // vertical basis vector of focal plane
 
 
-vector<Primitive*, Eigen::aligned_allocator<Primitive*> > primitives;
-vector<Transformation*, Eigen::aligned_allocator<Transformation*> > transforms;
-vector<Light*, Eigen::aligned_allocator<Light*> > lights;
+vector<Primitive*> primitives;
+vector<Transformation*> transforms;
+vector<Light*> lights;
 
 Material currentMaterial;
 ALight globalAmbient(Color(0.0f, 0.0f, 0.0f));
@@ -54,7 +54,7 @@ Ray generateRay(float scaleWidth, float scaleHeight) {
 }
 
 
-Color trace(const Ray& ray, const vector<Primitive*, Eigen::aligned_allocator<Primitive*> >& primitives){
+Color trace(const Ray& ray, const vector<Primitive*>& primitives){
 
     float closest_t = numeric_limits<float>::infinity();
     Intersection closestInter, intersect;
@@ -108,8 +108,7 @@ Color trace(const Ray& ray, const vector<Primitive*, Eigen::aligned_allocator<Pr
         Ray shadowRay(surfacepoint, l, 0.0f, numeric_limits<float>::infinity());
         for (int x = 0; x < primitives.size(); x++) {
             intersect = primitives[x]->intersect(shadowRay);
-            bool isHit = intersect.primitive != NULL;
-            if (closestInter.primitive != intersect.primitive && isHit && intersect.local.tHit > shadowRay.t_min){
+            if (intersect.local.isHit && closestInter.primitive != intersect.primitive && intersect.local.tHit >= shadowRay.t_min){
                 isShadowHit = true;
                 break;
             }
@@ -191,6 +190,21 @@ void parseLine(const string& line) {
 
     } else if (tokens[0] == "obj") {
         checkNumArguments(tokens, 1);
+        Transformation* currentTransform = new Transformation();
+        currentTransform = currentTransform->compose(transforms);
+
+        ObjParser object(tokens[1]);
+
+        vector<Triangle*> ts = object.getTriangles();
+
+        vector<Primitive*>* aggregate = new vector<Primitive*>;
+
+        for (int i = 0; i < ts.size(); i++) {
+            aggregate->push_back(new GeometricPrimitive(ts[i], currentMaterial, currentTransform));
+        }
+
+        primitives.push_back(new AggregatePrimitive(*aggregate));
+
     } else if (tokens[0] == "ltp") {
         checkNumArguments(tokens, 6);
         // there is an optional argument
@@ -266,6 +280,8 @@ int main(int argc, const char * argv[]) {
         return 0;
     }
 
+
+    cout << "Setting up scene..." << endl;
     ifstream fin;
     string line;
 
@@ -291,8 +307,8 @@ int main(int argc, const char * argv[]) {
         cout << "Invalid argument." << endl;
     }
 
-    int height = 1000;
-    int width = 1000;
+    int height = 300;
+    int width = 300;
 
     xvec = UR - UL;
     yvec = UL - LL;
@@ -304,6 +320,8 @@ int main(int argc, const char * argv[]) {
     int fraction = width * height / 10;
     float totalPixelsScale = (float) 100.0 / (width * height);
 
+
+    cout << "Raytracing..." << endl;
     timestamp_t t0 = get_timestamp();
 
     for (int i = 0; i < width; i++){
@@ -324,6 +342,7 @@ int main(int argc, const char * argv[]) {
     timestamp_t t1 = get_timestamp();
     cout << "Elapsed time: " << (t1 - t0) / 1000000.0L << endl;
 
+    cout << "Saving image..." << endl;
     negative.writeImage();
 
     return 0;

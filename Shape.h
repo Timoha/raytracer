@@ -7,6 +7,8 @@
 #include <Eigen/Dense>
 #include "Ray.h"
 
+#define EPSILON 0.1f
+
 using namespace std;
 
 class Shape
@@ -105,21 +107,69 @@ class Triangle : public Shape
 public:
     Triangle();
     Triangle(const Eigen::Vector3f& inVertexA, const Eigen::Vector3f& inVertexB, const Eigen::Vector3f& inVertexC);
+    Triangle(const Eigen::Vector3f& inVertexA, const Eigen::Vector3f& inVertexB, const Eigen::Vector3f& inVertexC,
+             const Eigen::Vector4f& inNormalA, const Eigen::Vector4f& inNormalB, const Eigen::Vector4f& inNormalC);
     bool isHit(const Ray& ray) const;
     LocalGeo intersect(const Ray& ray) const;
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 private:
     Eigen::Vector3f vertexA, vertexB, vertexC;
+    Eigen::Vector4f normalA, normalB, normalC;
 };
 
-Triangle::Triangle(const Eigen::Vector3f& inVertexA, const Eigen::Vector3f& inVertexB, const Eigen::Vector3f& inVertexC){
+Triangle::Triangle(const Eigen::Vector3f& inVertexA, const Eigen::Vector3f& inVertexB, const Eigen::Vector3f& inVertexC) {
     vertexA = inVertexA;
     vertexB = inVertexB;
     vertexC = inVertexC;
+
+    Eigen::Vector3f ab = vertexA - vertexB;
+    Eigen::Vector3f ac = vertexA - vertexC;
+    Eigen::Vector3f n = ab.cross(ac);
+    Eigen::Vector4f defaultNormal(n[0], n[1], n[2], 0.0f);
+
+    normalA = defaultNormal;
+    normalB = defaultNormal;
+    normalC = defaultNormal;
 }
 
-bool Triangle::isHit(const Ray& r) const {
-    return false;
+
+Triangle::Triangle(const Eigen::Vector3f& inVertexA, const Eigen::Vector3f& inVertexB, const Eigen::Vector3f& inVertexC,
+        const Eigen::Vector4f& inNormalA, const Eigen::Vector4f& inNormalB, const Eigen::Vector4f& inNormalC) {
+    vertexA = inVertexA;
+    vertexB = inVertexB;
+    vertexC = inVertexC;
+    normalA = inNormalA;
+    normalB = inNormalB;
+    normalC = inNormalC;
+}
+
+bool Triangle::isHit(const Ray& ray) const {
+    LocalGeo local;
+    Eigen::Vector3f d(ray.direction[0], ray.direction[1], ray.direction[2]);
+    Eigen::Vector3f s(ray.source[0], ray.source[1], ray.source[2]);
+
+    Eigen::Vector3f ab = vertexA - vertexB;
+    Eigen::Vector3f ac = vertexA - vertexC;
+    Eigen::Vector3f as = vertexA - s;
+    Eigen::Vector3f n = ab.cross(ac);
+
+    float M = d.dot(n);
+    // TODO: check for parallel rays maybe??
+
+
+    Eigen::Vector3f asCrossD = as.cross(d);
+
+    float beta = ac.dot(-asCrossD) / M;
+    if (beta < 0.0f || beta > 1.0f) {
+        return false;
+    }
+
+    float gamma = ab.dot(asCrossD) / M;
+    if (gamma < 0.0f || gamma > 1.0f - beta) {
+        return false;
+    }
+
+    return true;
 }
 
 LocalGeo Triangle::intersect(const Ray& ray) const {
@@ -145,21 +195,22 @@ LocalGeo Triangle::intersect(const Ray& ray) const {
     Eigen::Vector3f asCrossD = as.cross(d);
 
     float beta = ac.dot(-asCrossD) / M;
-    if (beta < 0 || beta > 1) {
+    if (beta < 0.0f || beta > 1.0f) {
         local.isHit = false;
         return local;
     }
 
     float gamma = ab.dot(asCrossD) / M;
-    if (gamma < 0 || gamma > 1 - beta) {
+    if (gamma < 0.0f || gamma > 1.0f - beta) {
         local.isHit = false;
         return local;
     }
 
+
     local.isHit = true;
     local.point = ray.source + t * ray.direction;
     local.tHit = t;
-    local.normal = Eigen::Vector4f(n[0], n[1], n[2], 0.0f);
+    local.normal = (normalA * (1.0f - gamma - beta) + normalB * gamma + normalC * beta).normalized();
 
     return local;
 }

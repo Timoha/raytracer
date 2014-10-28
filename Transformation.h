@@ -9,7 +9,7 @@
 #include "Ray.h"
 
 
-#define PI 3.14159265
+#define PI 3.14159265f
 
 using namespace std;
 
@@ -25,7 +25,7 @@ public:
     friend LocalGeo operator* (const Transformation& x, const LocalGeo& y);
 
     virtual Transformation* getInverse() const;
-    Transformation* compose(const vector<Transformation*, Eigen::aligned_allocator<Transformation*> > &ts);
+    Transformation* compose(const vector<Transformation*> &ts);
 
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
@@ -98,7 +98,7 @@ Transformation* Transformation::getInverse() const {
 }
 
 
-Transformation* Transformation::compose(const vector<Transformation*, Eigen::aligned_allocator<Transformation*> > &ts) {
+Transformation* Transformation::compose(const vector<Transformation*> &ts) {
     Transformation* final = new Transformation();
     for (unsigned i = 0; i < ts.size(); i++ ) {
         *final = *final * *ts[i];

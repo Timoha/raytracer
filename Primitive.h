@@ -57,7 +57,9 @@ public:
     virtual Material getBRDF() const = 0;
 };
 
-inline Primitive::~Primitive() { }
+inline Primitive::~Primitive() {
+
+}
 
 
 class GeometricPrimitive : public Primitive
@@ -112,22 +114,58 @@ Intersection GeometricPrimitive::intersect(const Ray &ray) const {
 }
 
 
+class AggregatePrimitive : public Primitive
+{
 
-//class AggregatePrimitive : public Primitive
-//{
-//
-///// NOT IMPLEMENTED
-//private:
-//    vector<Primitive*> primitives;
-//public:
-//    AggregatePrimitive(vector<Primitive*> &list);
-//    bool isHit(const Ray& ray) { } // not implemented
-//    float intersect(const Ray& ray) { } // not impelemented
-//    Material* getBRDF() { exit(1); }
-//};
-//
-//AggregatePrimitive::AggregatePrimitive(vector<Primitive*> &list) {
-//    primitives = list;
-//}
+private:
+    vector<Primitive*> primitives;
+public:
+    AggregatePrimitive(vector<Primitive*> &list);
+    bool isHit(const Ray& ray) const;
+    Intersection intersect(const Ray& ray) const;
+    Material getBRDF() const { exit(1); }
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+};
+
+AggregatePrimitive::AggregatePrimitive(vector<Primitive*> &list) {
+    primitives = list;
+}
+
+
+bool AggregatePrimitive::isHit(const Ray &ray) const {
+    for (int i = 0; i < primitives.size(); i++) {
+        if (primitives[i]->isHit(ray)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+
+Intersection AggregatePrimitive::intersect(const Ray &ray) const {
+
+    float closest_t = numeric_limits<float>::infinity();
+    Intersection finalInter, closestInter, intersect;
+    bool isPrimitiveHit = false;
+
+    for (int i = 0; i < primitives.size(); i++) {
+        intersect = primitives[i]->intersect(ray);
+        if (intersect.local.isHit){
+            isPrimitiveHit = true;
+            if (intersect.local.tHit < closest_t && intersect.local.tHit > 0.1f){
+                closest_t = intersect.local.tHit;
+                closestInter = intersect;
+            }
+        }
+    }
+
+    if (isPrimitiveHit) {
+        finalInter = closestInter;
+    } else {
+        finalInter.primitive = NULL;
+    }
+
+    return finalInter;
+}
 
 #endif
