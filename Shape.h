@@ -125,54 +125,36 @@ bool Triangle::isHit(const Ray& r) const {
 LocalGeo Triangle::intersect(const Ray& ray) const {
 
     LocalGeo local;
+    Eigen::Vector3f d(ray.direction[0], ray.direction[1], ray.direction[2]);
+    Eigen::Vector3f s(ray.source[0], ray.source[1], ray.source[2]);
 
-    float a = vertexA[0] - vertexB[0];
-    float b = vertexA[1] - vertexB[1];;
-    float c = vertexA[2] - vertexB[2];;
+    Eigen::Vector3f ab = vertexA - vertexB;
+    Eigen::Vector3f ac = vertexA - vertexC;
+    Eigen::Vector3f as = vertexA - s;
+    Eigen::Vector3f n = ab.cross(ac);
 
-    float d = vertexA[0] - vertexC[0];
-    float e = vertexA[1] - vertexC[1];
-    float f = vertexA[2] - vertexC[2];
+    float M = d.dot(n);
+    // TODO: check for parallel rays maybe??
 
-    float g = ray.direction[0];
-    float h = ray.direction[1];
-    float i = ray.direction[2];
-
-    float j = vertexA[0] - ray.source[0];
-    float k = vertexA[1] - ray.source[1];
-    float l = vertexA[2] - ray.source[2];
-
-    float eihf = e*i - h*f;
-    float gfdi = g*f - d*i;
-    float dheg = d*h - e*g;
-
-    float akjb = a*k - j*b;
-    float jcal = j*c - a*l;
-    float blkc = b*l - k*c;
-
-    float M = a*eihf + b*gfdi + c*dheg;
-
-    float t = -1.0f * (f*akjb + e*jcal + d*blkc) / M;
+    float t = as.dot(n) / M;
     if (t < ray.t_min || t > ray.t_max) {
         local.isHit = false;
         return local;
     }
 
-    float beta  = (j*eihf + k*gfdi + l*dheg) / M;
+    Eigen::Vector3f asCrossD = as.cross(d);
+
+    float beta = ac.dot(-asCrossD) / M;
     if (beta < 0 || beta > 1) {
         local.isHit = false;
         return local;
     }
 
-    float gamma = (i*akjb + h*jcal + g*blkc) / M;
+    float gamma = ab.dot(asCrossD) / M;
     if (gamma < 0 || gamma > 1 - beta) {
         local.isHit = false;
         return local;
     }
-
-    Eigen::Vector3f V = vertexB - vertexA;
-    Eigen::Vector3f W = vertexC - vertexA;
-    Eigen::Vector3f n = V.cross(W).normalized();
 
     local.isHit = true;
     local.point = ray.source + t * ray.direction;
