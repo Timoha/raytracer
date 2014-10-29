@@ -9,6 +9,7 @@
 #include <string>
 #include <iostream>
 #include <algorithm>
+#include <iterator>
 
 #include <Eigen/Dense>
 #include <Eigen/StdVector>
@@ -44,7 +45,7 @@ ObjParser::ObjParser(string filePath){
     string line;
 
 
-    fin.open(filePath);
+    fin.open(filePath.c_str());
 
     if (!fin.good()) {
         fin.close();

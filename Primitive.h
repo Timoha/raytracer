@@ -74,6 +74,8 @@ public:
     bool isHit(const Ray& ray) const;
     Intersection intersect(const Ray& ray) const;
     Material getBRDF() const { return material; }
+    const Shape* getShape() { return shape; }
+    const Transformation* getObjToWorld() { return objToWorld; }
 };
 
 
@@ -124,6 +126,9 @@ public:
     bool isHit(const Ray& ray) const;
     Intersection intersect(const Ray& ray) const;
     Material getBRDF() const { exit(1); }
+    const vector<Primitive*>& getPrimitives() { return primitives; }
+
+
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 

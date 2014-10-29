@@ -7,7 +7,7 @@
 #include <Eigen/Dense>
 #include "Ray.h"
 
-#define EPSILON 0.00001f
+#define EPSILON 0.000001f
 
 using namespace std;
 
@@ -35,6 +35,9 @@ public:
     ~Sphere();
     bool isHit(const Ray& ray) const;
     LocalGeo intersect(const Ray& ray) const;
+    Eigen::Vector4d getOrigin() { return origin; }
+    double getRadius() { return radius; }
+
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 private:
     Eigen::Vector4d origin;
@@ -111,6 +114,10 @@ public:
              const Eigen::Vector4d& inNormalA, const Eigen::Vector4d& inNormalB, const Eigen::Vector4d& inNormalC);
     bool isHit(const Ray& ray) const;
     LocalGeo intersect(const Ray& ray) const;
+    Eigen::Vector3d getA() { return vertexA; }
+    Eigen::Vector3d getB() { return vertexB; }
+    Eigen::Vector3d getC() { return vertexC; }
+
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 private:
     Eigen::Vector3d vertexA, vertexB, vertexC;
@@ -154,7 +161,10 @@ bool Triangle::isHit(const Ray& ray) const {
     Eigen::Vector3d n = ab.cross(ac);
 
     double M = d.dot(n);
-    // TODO: check for parallel rays maybe??
+    if (abs(M) < EPSILON) {
+        local.isHit = false;
+        return local;
+    }
 
 
     Eigen::Vector3d asCrossD = as.cross(d);
@@ -184,7 +194,7 @@ LocalGeo Triangle::intersect(const Ray& ray) const {
     Eigen::Vector3d n = ab.cross(ac);
 
     double M = d.dot(n);
-    if (abs(M) < EPSILON * EPSILON) {
+    if (abs(M) < EPSILON) {
         local.isHit = false;
         return local;
     }

@@ -3,6 +3,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <algorithm>
+#include <iterator>
 #include <vector>
 #include <time.h>
 #include <limits>
@@ -26,11 +27,11 @@ using namespace std;
 
 /************ FROM SCENE CLASS ************/
 
-Eigen::Vector4d eye(0.0f, 0.0f, 0.0f, 1.0f);
-Eigen::Vector4d UL(-1.0f, 1.0f, -1.0f, 1.0f);
-Eigen::Vector4d UR(1.0f, 1.0f, -1.0f, 1.0f);
-Eigen::Vector4d LL(1.0f, -1.0f, -1.0f, 1.0f);
-Eigen::Vector4d LR(-1.0f, -1.0f, -1.0f, 1.0f);
+Eigen::Vector4d eye(0.0, 0.0, 0.0, 1.0);
+Eigen::Vector4d UL(-1.0, 1.0, -1.0, 1.0);
+Eigen::Vector4d UR(1.0, 1.0, -1.0, 1.0);
+Eigen::Vector4d LL(1.0, -1.0, -1.0, 1.0);
+Eigen::Vector4d LR(-1.0, -1.0, -1.0, 1.0);
 Eigen::Vector4d xvec; // horizontal basis vector of focal plane
 Eigen::Vector4d yvec; // vertical basis vector of focal plane
 int height = 1000;
@@ -43,12 +44,12 @@ vector<Transformation*> transforms;
 vector<Light*> lights;
 
 Material currentMaterial;
-ALight globalAmbient(Color(0.0f, 0.0f, 0.0f));
+ALight globalAmbient(Color(0.0, 0.0, 0.0));
 
 
 Ray generateRay(double scaleWidth, double scaleHeight) {
     double focalplane = (UL + xvec * scaleWidth + yvec * scaleHeight)[2];
-    Eigen::Vector4d pixel_loc = Eigen::Vector4d(UL[0] + xvec[0] * scaleWidth, UL[0]+ yvec[1] * scaleHeight, focalplane, 1.0f);
+    Eigen::Vector4d pixel_loc = Eigen::Vector4d(UL[0] + xvec[0] * scaleWidth, UL[0]+ yvec[1] * scaleHeight, focalplane, 1.0);
     Eigen::Vector4d direction = pixel_loc - eye;
     direction.normalize();
     return Ray(eye, direction, focalplane, numeric_limits<double>::infinity());
@@ -58,7 +59,7 @@ Ray generateRay(double scaleWidth, double scaleHeight) {
 Color trace(const Ray& ray, const vector<Primitive*>& primitives, int depth){
 
     if (depth == 0) {
-        return Color(0.0f, 0.0f, 0.0f);
+        return Color(0.0, 0.0, 0.0);
     }
 
     double closest_t = numeric_limits<double>::infinity();
@@ -75,14 +76,14 @@ Color trace(const Ray& ray, const vector<Primitive*>& primitives, int depth){
     }
 
     if (!isPrimitiveHit) {
-        return Color(0.0f, 0.0f, 0.0f);
+        return Color(0.0, 0.0, 0.0);
     }
 
 
     // calculate color
-    Color rgbSpecular(0.0f, 0.0f, 0.0f);
-    Color rgbDiffuse(0.0f, 0.0f, 0.0f);
-    Color rgbAmbient(0.0f, 0.0f, 0.0f);
+    Color rgbSpecular(0.0, 0.0, 0.0);
+    Color rgbDiffuse(0.0, 0.0, 0.0);
+    Color rgbAmbient(0.0, 0.0, 0.0);
 
     Eigen::Vector4d surfacepoint = closestInter.local.point;
 
@@ -94,9 +95,9 @@ Color trace(const Ray& ray, const vector<Primitive*>& primitives, int depth){
     v.normalize();
 
     Material primitiveBRDF = closestInter.primitive->getBRDF();
-    double specularDot = 0.0f;
-    double diffuseDot = 0.0f;
-    double scaleSpecular = 0.0f;
+    double specularDot = 0.0;
+    double diffuseDot = 0.0;
+    double scaleSpecular = 0.0;
 
     for (int i = 0; i < lights.size(); i++){
 
@@ -108,7 +109,7 @@ Color trace(const Ray& ray, const vector<Primitive*>& primitives, int depth){
 
         // shadows
         bool isShadowHit = false;
-        Ray shadowRay(surfacepoint, l, 0.0f, numeric_limits<double>::infinity());
+        Ray shadowRay(surfacepoint, l, 0.0, numeric_limits<double>::infinity());
         for (int x = 0; x < primitives.size(); x++) {
             intersect = primitives[x]->intersect(shadowRay);
             if (intersect.local.isHit && closestInter.primitive != intersect.primitive){
@@ -128,12 +129,12 @@ Color trace(const Ray& ray, const vector<Primitive*>& primitives, int depth){
         specularDot = r.dot(v);
         diffuseDot = n.dot(l);
 
-        if (specularDot > 0.0f) {
+        if (specularDot > 0.0) {
             scaleSpecular = powf(specularDot, primitiveBRDF.specularExponent);
             rgbSpecular = rgbSpecular + lightColor * scaleSpecular;
         }
 
-        if (diffuseDot > 0.0f) {
+        if (diffuseDot > 0.0) {
             rgbDiffuse = rgbDiffuse + lightColor * diffuseDot;
         }
     }
@@ -145,7 +146,7 @@ Color trace(const Ray& ray, const vector<Primitive*>& primitives, int depth){
     Eigen::Vector4d rd = v - 2 * v.dot(n) * n;
     rd.normalize();
 
-    Ray reflect(surfacepoint, rd, 0.0f, numeric_limits<double>::infinity());
+    Ray reflect(surfacepoint, rd, 0.0, numeric_limits<double>::infinity());
 
     return rgbDiffuse + rgbSpecular + rgbAmbient + primitiveBRDF.reflective * trace(reflect, primitives, depth - 1);
 }
@@ -170,17 +171,17 @@ void parseLine(const string& line) {
 
     if (tokens[0] == "cam") {
         checkNumArguments(tokens, 15);
-        eye = Eigen::Vector4d(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()), 1.0f);
-        LL = Eigen::Vector4d(atof(tokens[4].c_str()), atof(tokens[5].c_str()), atof(tokens[6].c_str()), 1.0f);
-        LR = Eigen::Vector4d(atof(tokens[7].c_str()), atof(tokens[8].c_str()), atof(tokens[9].c_str()), 1.0f);
-        UL = Eigen::Vector4d(atof(tokens[10].c_str()), atof(tokens[11].c_str()), atof(tokens[12].c_str()), 1.0f);
-        UR = Eigen::Vector4d(atof(tokens[13].c_str()), atof(tokens[14].c_str()), atof(tokens[15].c_str()), 1.0f);
+        eye = Eigen::Vector4d(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()), 1.0);
+        LL = Eigen::Vector4d(atof(tokens[4].c_str()), atof(tokens[5].c_str()), atof(tokens[6].c_str()), 1.0);
+        LR = Eigen::Vector4d(atof(tokens[7].c_str()), atof(tokens[8].c_str()), atof(tokens[9].c_str()), 1.0);
+        UL = Eigen::Vector4d(atof(tokens[10].c_str()), atof(tokens[11].c_str()), atof(tokens[12].c_str()), 1.0);
+        UR = Eigen::Vector4d(atof(tokens[13].c_str()), atof(tokens[14].c_str()), atof(tokens[15].c_str()), 1.0);
     } else if (tokens[0] == "sph") {
         checkNumArguments(tokens, 4);
         Transformation* currentTransform = new Transformation();
         currentTransform = currentTransform->compose(transforms);
 
-        Sphere* sphere = new Sphere(Eigen::Vector4d(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()), 1.0f), atof(tokens[4].c_str()));
+        Sphere* sphere = new Sphere(Eigen::Vector4d(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()), 1.0), atof(tokens[4].c_str()));
 
         primitives.push_back(new GeometricPrimitive(sphere, currentMaterial, currentTransform));
 
@@ -216,16 +217,16 @@ void parseLine(const string& line) {
     } else if (tokens[0] == "ltp") {
         checkNumArguments(tokens, 6);
         // there is an optional argument
-        double falloff = 0.0f;
+        double falloff = 0.0;
         if (tokens.size() - 1 < 6) {
             falloff = atof(tokens[7].c_str());
         }
-        Eigen::Vector4d* source = new Eigen::Vector4d(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()), 1.0f);
+        Eigen::Vector4d* source = new Eigen::Vector4d(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()), 1.0);
         PLight* pointLight = new PLight(Color(atof(tokens[4].c_str()), atof(tokens[5].c_str()), atof(tokens[6].c_str())), *source, falloff);
         lights.push_back(pointLight);
     } else if (tokens[0] == "ltd") {
         checkNumArguments(tokens, 6);
-        Eigen::Vector4d* source = new Eigen::Vector4d(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()), 0.0f);
+        Eigen::Vector4d* source = new Eigen::Vector4d(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()), 0.0);
         DLight* dirLight = new DLight(Color(atof(tokens[4].c_str()), atof(tokens[5].c_str()), atof(tokens[6].c_str())), *source);
         lights.push_back(dirLight);
     } else if (tokens[0] == "lta") {
@@ -345,8 +346,8 @@ int main(int argc, const char * argv[]) {
             }
 
             Ray temp = generateRay((double) i / width, (double) j / height);
-            Color result = trace(temp, primitives, depth) * 255.0f;
-            negative.commit(i, height - j - 1, fmin(result.getRed(), 255.0f), fmin(result.getGreen(), 255.0f), fmin(result.getBlue(), 255.0f));
+            Color result = trace(temp, primitives, depth) * 255.0;
+            negative.commit(i, height - j - 1, fmin(result.getRed(), 255.0), fmin(result.getGreen(), 255.0), fmin(result.getBlue(), 255.0));
             //FIX ME: currently only supporting one sample per pixel
             //negative.commit(i, j, 255*i/width, 255*j/height, 200) activate this for pretty colors
         }
