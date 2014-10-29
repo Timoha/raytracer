@@ -17,19 +17,19 @@ class Material {
 public:
     Material();
     Color ambient, specular, diffuse, reflective;
-    float specularExponent;
+    double specularExponent;
 
     friend ostream& operator<< (ostream &out, Material &m);
 };
 
 
 Material::Material() {
-    Color black(0.0f, 0.0f, 0.0f);
+    Color black(0.0, 0.0, 0.0);
     ambient = black;
     specular = black;
     diffuse = black;
     reflective = black;
-    specularExponent = 0.0f;
+    specularExponent = 0.0;
 }
 
 ostream& operator<< (ostream &out, Material &m) {
@@ -144,19 +144,19 @@ bool AggregatePrimitive::isHit(const Ray &ray) const {
 
 Intersection AggregatePrimitive::intersect(const Ray &ray) const {
 
-    float closest_t = numeric_limits<float>::infinity();
+    double closest_t = numeric_limits<double>::infinity();
     Intersection finalInter, closestInter, intersect;
     bool isPrimitiveHit = false;
 
     for (int i = 0; i < primitives.size(); i++) {
         intersect = primitives[i]->intersect(ray);
-        if (intersect.local.isHit){
+
+        if (intersect.local.isHit && intersect.local.tHit < closest_t){
             isPrimitiveHit = true;
-            if (intersect.local.tHit < closest_t && intersect.local.tHit > 0.1f){
-                closest_t = intersect.local.tHit;
-                closestInter = intersect;
-            }
+            closest_t = intersect.local.tHit;
+            closestInter = intersect;
         }
+
     }
 
     if (isPrimitiveHit) {

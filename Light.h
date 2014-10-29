@@ -11,13 +11,13 @@ public:
     Light();
     Light(const Color& inColor);
     Color getColor() { return color; }
-    virtual Eigen::Vector4f getLightVector(const Eigen::Vector4f& surfacePoint) = 0;
+    virtual Eigen::Vector4d getLightVector(const Eigen::Vector4d& surfacePoint) = 0;
 protected:
     Color color;
 };
 
 Light::Light() {
-    color = Color(0.0f, 0.0f, 0.0f);
+    color = Color(0.0, 0.0, 0.0);
 }
 
 Light::Light(const Color& inColor) {
@@ -29,22 +29,21 @@ Light::Light(const Color& inColor) {
 class DLight : public Light {
 public:
     DLight();
-    DLight(const Color& inColor, const Eigen::Vector4f& inDir) : Light(inColor), direction(inDir) {}
-    Eigen::Vector4f getDirection() { return direction; }
-    Eigen::Vector4f getLightVector(const Eigen::Vector4f& surfacePoint);
+    DLight(const Color& inColor, const Eigen::Vector4d& inDir) : Light(inColor), direction(inDir) {}
+    Eigen::Vector4d getDirection() { return direction; }
+    Eigen::Vector4d getLightVector(const Eigen::Vector4d& surfacePoint);
     friend ostream& operator<< (ostream &out, DLight &m);
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 private:
-    Eigen::Vector4f direction;
+    Eigen::Vector4d direction;
 };
 
 DLight::DLight() {
-    direction = Eigen::Vector4f(0.0f, 0.0f, 0.0f, 0.0f);
+    direction = Eigen::Vector4d(0.0, 0.0, 0.0, 0.0);
 }
 
 
-Eigen::Vector4f DLight::getLightVector(const Eigen::Vector4f& surfacePoint) {
-//    cout << direction.normalized() << ";" << endl;
+Eigen::Vector4d DLight::getLightVector(const Eigen::Vector4d& surfacePoint) {
     return (-direction).normalized();
 }
 
@@ -57,23 +56,23 @@ ostream& operator<< (ostream &out, DLight &l) {
 class PLight : public Light {
 public:
     PLight();
-    PLight(const Color& inColor, const Eigen::Vector4f& inSource, float inFalloff) : Light(inColor), source(inSource), falloff(inFalloff) {}
-    Eigen::Vector4f getSource() { return source; }
-    Eigen::Vector4f getLightVector(const Eigen::Vector4f& surfacePoint);
+    PLight(const Color& inColor, const Eigen::Vector4d& inSource, double inFalloff) : Light(inColor), source(inSource), falloff(inFalloff) {}
+    Eigen::Vector4d getSource() { return source; }
+    Eigen::Vector4d getLightVector(const Eigen::Vector4d& surfacePoint);
     friend ostream& operator<< (ostream &out, PLight &l);
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 private:
-    Eigen::Vector4f source;
-    float falloff;
+    Eigen::Vector4d source;
+    double falloff;
 };
 
 PLight::PLight(){
-    source = Eigen::Vector4f(0.0f, 0.0f, 0.0f, 1.0f);
-    falloff = 0.0f;
+    source = Eigen::Vector4d(0.0, 0.0, 0.0, 1.0);
+    falloff = 0.0;
 }
 
 
-Eigen::Vector4f PLight::getLightVector(const Eigen::Vector4f& surfacePoint) {
+Eigen::Vector4d PLight::getLightVector(const Eigen::Vector4d& surfacePoint) {
     return (source - surfacePoint).normalized();
 }
 
@@ -88,13 +87,13 @@ class ALight : public Light {
 public:
     ALight();
     ALight(const Color& inColor) : Light(inColor) {}
-    Eigen::Vector4f getLightVector(const Eigen::Vector4f& surfacePoint);
+    Eigen::Vector4d getLightVector(const Eigen::Vector4d& surfacePoint);
     friend ostream& operator<< (ostream &out, ALight &l);
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 
-Eigen::Vector4f ALight::getLightVector(const Eigen::Vector4f& surfacePoint) {
-    return Eigen::Vector4f(0.0f, 0.0f, 0.0f, 0.0f);
+Eigen::Vector4d ALight::getLightVector(const Eigen::Vector4d& surfacePoint) {
+    return Eigen::Vector4d(0.0, 0.0, 0.0, 0.0);
 }
 
 ostream& operator<< (ostream &out, ALight &l) {

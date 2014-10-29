@@ -10,8 +10,6 @@
 
 #include <Eigen/Dense>
 #include <Eigen/StdVector>
-#include <Python/Python.h>
-
 
 #include "Transformation.h"
 #include "Shape.h"
@@ -28,13 +26,16 @@ using namespace std;
 
 /************ FROM SCENE CLASS ************/
 
-Eigen::Vector4f eye(0.0f, 0.0f, 0.0f, 1.0f);
-Eigen::Vector4f UL(-1.0f, 1.0f, -1.0f, 1.0f);
-Eigen::Vector4f UR(1.0f, 1.0f, -1.0f, 1.0f);
-Eigen::Vector4f LL(1.0f, -1.0f, -1.0f, 1.0f);
-Eigen::Vector4f LR(-1.0f, -1.0f, -1.0f, 1.0f);
-Eigen::Vector4f xvec; // horizontal basis vector of focal plane
-Eigen::Vector4f yvec; // vertical basis vector of focal plane
+Eigen::Vector4d eye(0.0f, 0.0f, 0.0f, 1.0f);
+Eigen::Vector4d UL(-1.0f, 1.0f, -1.0f, 1.0f);
+Eigen::Vector4d UR(1.0f, 1.0f, -1.0f, 1.0f);
+Eigen::Vector4d LL(1.0f, -1.0f, -1.0f, 1.0f);
+Eigen::Vector4d LR(-1.0f, -1.0f, -1.0f, 1.0f);
+Eigen::Vector4d xvec; // horizontal basis vector of focal plane
+Eigen::Vector4d yvec; // vertical basis vector of focal plane
+int height = 1000;
+int width = 1000;
+int depth = 10;
 
 
 vector<Primitive*> primitives;
@@ -45,29 +46,31 @@ Material currentMaterial;
 ALight globalAmbient(Color(0.0f, 0.0f, 0.0f));
 
 
-Ray generateRay(float scaleWidth, float scaleHeight) {
-    float focalplane = (UL + xvec * scaleWidth + yvec * scaleHeight)[2];
-    Eigen::Vector4f pixel_loc = Eigen::Vector4f(UL[0] + xvec[0] * scaleWidth, UL[0]+ yvec[1] * scaleHeight, focalplane, 1.0f);
-    Eigen::Vector4f direction = pixel_loc - eye;
+Ray generateRay(double scaleWidth, double scaleHeight) {
+    double focalplane = (UL + xvec * scaleWidth + yvec * scaleHeight)[2];
+    Eigen::Vector4d pixel_loc = Eigen::Vector4d(UL[0] + xvec[0] * scaleWidth, UL[0]+ yvec[1] * scaleHeight, focalplane, 1.0f);
+    Eigen::Vector4d direction = pixel_loc - eye;
     direction.normalize();
-    return Ray(eye, direction, focalplane, numeric_limits<float>::infinity());
+    return Ray(eye, direction, focalplane, numeric_limits<double>::infinity());
 }
 
 
-Color trace(const Ray& ray, const vector<Primitive*>& primitives){
+Color trace(const Ray& ray, const vector<Primitive*>& primitives, int depth){
 
-    float closest_t = numeric_limits<float>::infinity();
+    if (depth == 0) {
+        return Color(0.0f, 0.0f, 0.0f);
+    }
+
+    double closest_t = numeric_limits<double>::infinity();
     Intersection closestInter, intersect;
     bool isPrimitiveHit = false;
 
     for (int i = 0; i < primitives.size(); i++) {
         intersect = primitives[i]->intersect(ray);
-        if (intersect.local.isHit){
+        if (intersect.local.isHit && intersect.local.tHit < closest_t){
             isPrimitiveHit = true;
-            if (intersect.local.tHit < closest_t){
-                closest_t = intersect.local.tHit;
-                closestInter = intersect;
-            }
+            closest_t = intersect.local.tHit;
+            closestInter = intersect;
         }
     }
 
@@ -81,45 +84,45 @@ Color trace(const Ray& ray, const vector<Primitive*>& primitives){
     Color rgbDiffuse(0.0f, 0.0f, 0.0f);
     Color rgbAmbient(0.0f, 0.0f, 0.0f);
 
-    Eigen::Vector4f surfacepoint = closestInter.local.point;
+    Eigen::Vector4d surfacepoint = closestInter.local.point;
 
     // normal
-    Eigen::Vector4f n = closestInter.local.normal;
+    Eigen::Vector4d n = closestInter.local.normal;
 
     // view
-    Eigen::Vector4f v = surfacepoint - eye;
+    Eigen::Vector4d v = surfacepoint - ray.source;
     v.normalize();
 
     Material primitiveBRDF = closestInter.primitive->getBRDF();
-    float specularDot = 0.0f;
-    float diffuseDot = 0.0f;
-    float scaleSpecular = 0.0f;
+    double specularDot = 0.0f;
+    double diffuseDot = 0.0f;
+    double scaleSpecular = 0.0f;
 
     for (int i = 0; i < lights.size(); i++){
 
         // light
-        Eigen::Vector4f l = lights[i]->getLightVector(surfacepoint);
+        Eigen::Vector4d l = lights[i]->getLightVector(surfacepoint);
 
         Color lightColor = lights[i]->getColor();
         rgbAmbient = rgbAmbient + lightColor;
 
         // shadows
         bool isShadowHit = false;
-        Ray shadowRay(surfacepoint, l, 0.0f, numeric_limits<float>::infinity());
+        Ray shadowRay(surfacepoint, l, 0.0f, numeric_limits<double>::infinity());
         for (int x = 0; x < primitives.size(); x++) {
             intersect = primitives[x]->intersect(shadowRay);
-            if (intersect.local.isHit && closestInter.primitive != intersect.primitive && intersect.local.tHit >= shadowRay.t_min){
+            if (intersect.local.isHit && closestInter.primitive != intersect.primitive){
                 isShadowHit = true;
                 break;
             }
         }
 
         if (isShadowHit) {
-            break;
+            continue;
         }
 
         // reflected
-        Eigen::Vector4f r = l - 2 * l.dot(n) * n;
+        Eigen::Vector4d r = l - 2 * l.dot(n) * n;
         r.normalize();
 
         specularDot = r.dot(v);
@@ -136,10 +139,15 @@ Color trace(const Ray& ray, const vector<Primitive*>& primitives){
     }
 
     rgbAmbient = (rgbAmbient + globalAmbient.getColor()) * primitiveBRDF.ambient;
-    rgbDiffuse = rgbDiffuse * primitiveBRDF.diffuse ;
+    rgbDiffuse = rgbDiffuse * primitiveBRDF.diffuse;
     rgbSpecular = rgbSpecular * primitiveBRDF.specular;
 
-    return rgbDiffuse + rgbSpecular + rgbAmbient;
+    Eigen::Vector4d rd = v - 2 * v.dot(n) * n;
+    rd.normalize();
+
+    Ray reflect(surfacepoint, rd, 0.0f, numeric_limits<double>::infinity());
+
+    return rgbDiffuse + rgbSpecular + rgbAmbient + primitiveBRDF.reflective * trace(reflect, primitives, depth - 1);
 }
 
 
@@ -156,23 +164,23 @@ void parseLine(const string& line) {
     istringstream iss(line);
     vector<string> tokens((istream_iterator<string>(iss)), istream_iterator<string>());
 
-    if (tokens.size() == 0) {
+    if (tokens.size() == 0 || tokens[0] == "#") {
         return;
     }
 
     if (tokens[0] == "cam") {
         checkNumArguments(tokens, 15);
-        eye = Eigen::Vector4f(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()), 1.0f);
-        LL = Eigen::Vector4f(atof(tokens[4].c_str()), atof(tokens[5].c_str()), atof(tokens[6].c_str()), 1.0f);
-        LR = Eigen::Vector4f(atof(tokens[7].c_str()), atof(tokens[8].c_str()), atof(tokens[9].c_str()), 1.0f);
-        UL = Eigen::Vector4f(atof(tokens[10].c_str()), atof(tokens[11].c_str()), atof(tokens[12].c_str()), 1.0f);
-        UR = Eigen::Vector4f(atof(tokens[13].c_str()), atof(tokens[14].c_str()), atof(tokens[15].c_str()), 1.0f);
+        eye = Eigen::Vector4d(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()), 1.0f);
+        LL = Eigen::Vector4d(atof(tokens[4].c_str()), atof(tokens[5].c_str()), atof(tokens[6].c_str()), 1.0f);
+        LR = Eigen::Vector4d(atof(tokens[7].c_str()), atof(tokens[8].c_str()), atof(tokens[9].c_str()), 1.0f);
+        UL = Eigen::Vector4d(atof(tokens[10].c_str()), atof(tokens[11].c_str()), atof(tokens[12].c_str()), 1.0f);
+        UR = Eigen::Vector4d(atof(tokens[13].c_str()), atof(tokens[14].c_str()), atof(tokens[15].c_str()), 1.0f);
     } else if (tokens[0] == "sph") {
         checkNumArguments(tokens, 4);
         Transformation* currentTransform = new Transformation();
         currentTransform = currentTransform->compose(transforms);
 
-        Sphere* sphere = new Sphere(Eigen::Vector4f(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()), 1.0f), atof(tokens[4].c_str()));
+        Sphere* sphere = new Sphere(Eigen::Vector4d(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()), 1.0f), atof(tokens[4].c_str()));
 
         primitives.push_back(new GeometricPrimitive(sphere, currentMaterial, currentTransform));
 
@@ -180,9 +188,9 @@ void parseLine(const string& line) {
         checkNumArguments(tokens, 9);
         Transformation* currentTransform = new Transformation();
         currentTransform = currentTransform->compose(transforms);
-        Eigen::Vector3f a(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()));
-        Eigen::Vector3f b(atof(tokens[4].c_str()), atof(tokens[5].c_str()), atof(tokens[6].c_str()));
-        Eigen::Vector3f c(atof(tokens[7].c_str()), atof(tokens[8].c_str()), atof(tokens[9].c_str()));
+        Eigen::Vector3d a(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()));
+        Eigen::Vector3d b(atof(tokens[4].c_str()), atof(tokens[5].c_str()), atof(tokens[6].c_str()));
+        Eigen::Vector3d c(atof(tokens[7].c_str()), atof(tokens[8].c_str()), atof(tokens[9].c_str()));
 
         Triangle* triangle = new Triangle(a, b, c);
 
@@ -208,16 +216,16 @@ void parseLine(const string& line) {
     } else if (tokens[0] == "ltp") {
         checkNumArguments(tokens, 6);
         // there is an optional argument
-        float falloff = 0.0f;
+        double falloff = 0.0f;
         if (tokens.size() - 1 < 6) {
             falloff = atof(tokens[7].c_str());
         }
-        Eigen::Vector4f* source = new Eigen::Vector4f(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()), 1.0f);
+        Eigen::Vector4d* source = new Eigen::Vector4d(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()), 1.0f);
         PLight* pointLight = new PLight(Color(atof(tokens[4].c_str()), atof(tokens[5].c_str()), atof(tokens[6].c_str())), *source, falloff);
         lights.push_back(pointLight);
     } else if (tokens[0] == "ltd") {
         checkNumArguments(tokens, 6);
-        Eigen::Vector4f* source = new Eigen::Vector4f(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()), 0.0f);
+        Eigen::Vector4d* source = new Eigen::Vector4d(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()), 0.0f);
         DLight* dirLight = new DLight(Color(atof(tokens[4].c_str()), atof(tokens[5].c_str()), atof(tokens[6].c_str())), *source);
         lights.push_back(dirLight);
     } else if (tokens[0] == "lta") {
@@ -285,8 +293,15 @@ int main(int argc, const char * argv[]) {
     ifstream fin;
     string line;
 
-    if (argc == 2) {
+    if (argc >= 2) {
         fin.open(argv[1]);
+
+        if (argc == 5) {
+            width = atoi(argv[2]);
+            height = atoi(argv[3]);
+            depth = atoi(argv[4]);
+        }
+
 
         if (!fin.good()) {
             cout << "File \"" << argv[1] << "\" does not exists" << endl;
@@ -307,8 +322,6 @@ int main(int argc, const char * argv[]) {
         cout << "Invalid argument." << endl;
     }
 
-    int height = 300;
-    int width = 300;
 
     xvec = UR - UL;
     yvec = UL - LL;
@@ -318,7 +331,7 @@ int main(int argc, const char * argv[]) {
 
     int pixelCount = 0;
     int fraction = width * height / 10;
-    float totalPixelsScale = (float) 100.0 / (width * height);
+    double totalPixelsScale = 100.0 / (width * height);
 
 
     cout << "Raytracing..." << endl;
@@ -331,8 +344,8 @@ int main(int argc, const char * argv[]) {
                 cout << (int) (pixelCount * totalPixelsScale) << "%" << endl;
             }
 
-            Ray temp = generateRay((float) i / width, (float) j / height);
-            Color result = trace(temp, primitives) * 255.0f;
+            Ray temp = generateRay((double) i / width, (double) j / height);
+            Color result = trace(temp, primitives, depth) * 255.0f;
             negative.commit(i, height - j - 1, fmin(result.getRed(), 255.0f), fmin(result.getGreen(), 255.0f), fmin(result.getBlue(), 255.0f));
             //FIX ME: currently only supporting one sample per pixel
             //negative.commit(i, j, 255*i/width, 255*j/height, 200) activate this for pretty colors

@@ -21,8 +21,8 @@ class ObjParser {
 
 private:
     vector<Triangle*> triangles;
-    vector<Eigen::Vector3f*> verticies;
-    vector<Eigen::Vector4f*> normals;
+    vector<Eigen::Vector3d*> verticies;
+    vector<Eigen::Vector4d*> normals;
     void parseLine(const string& line);
     vector<int> splitSlash(const vector<string>& tokens);
 
@@ -43,8 +43,6 @@ ObjParser::ObjParser(string filePath){
     ifstream fin;
     string line;
 
-    filePath.erase(0, 1);
-    filePath.erase(filePath.size() - 1);
 
     fin.open(filePath);
 
@@ -93,14 +91,14 @@ void ObjParser::parseLine(const string& line) {
     }
 
     if (tokens[0] == "v") {
-        Eigen::Vector3f* vertex = new Eigen::Vector3f(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()));
+        Eigen::Vector3d* vertex = new Eigen::Vector3d(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()));
         if (tokens.size() == 5) {
             *vertex = *vertex / atof(tokens[4].c_str());
         }
 
         verticies.push_back(vertex);
     } else if (tokens[0] == "vn") {
-        Eigen::Vector4f* normal = new Eigen::Vector4f(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()), 0.0f);
+        Eigen::Vector4d* normal = new Eigen::Vector4d(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()), 0.0f);
         normal->normalize();
 
         normals.push_back(normal);

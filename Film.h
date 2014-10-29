@@ -33,7 +33,7 @@ private:
 public:
     Film(int widthIn, int heightIn);
     void writeImage();
-    void commit(int x, int y, float r, float g, float b);
+    void commit(int x, int y, double r, double g, double b);
 };
 
 Film::Film(int widthIn, int heightIn){
@@ -55,7 +55,7 @@ void Film::writeImage() {
 
 
 //saves image to filename given as argument. Warning, this overwrites the file without warning!. at the moment, only one sample per picture
-void Film::commit(int x, int y, float r, float g, float b) {
+void Film::commit(int x, int y, double r, double g, double b) {
     image[4 * width * y + 4 * x + 0] = r; //RED
     image[4 * width * y + 4 * x + 1] = g; //GREEN
     image[4 * width * y + 4 * x + 2] = b; //BLUE

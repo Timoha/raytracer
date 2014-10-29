@@ -9,7 +9,7 @@
 #include "Ray.h"
 
 
-#define PI 3.14159265f
+#define PI 3.14159265
 
 using namespace std;
 
@@ -30,13 +30,13 @@ public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
 protected:
-    Eigen::Matrix4f matrix, inverseTranspose;
+    Eigen::Matrix4d matrix, inverseTranspose;
 };
 
 
 Transformation::Transformation() {
-    matrix = Eigen::Matrix4f::Identity();
-    inverseTranspose = Eigen::Matrix4f::Identity();
+    matrix = Eigen::Matrix4d::Identity();
+    inverseTranspose = Eigen::Matrix4d::Identity();
 }
 
 Transformation::Transformation(const Transformation &rhs) {
@@ -82,7 +82,7 @@ LocalGeo operator* (const Transformation& x, const LocalGeo& y) {
     LocalGeo temp = y;
     if (y.isHit) {
         temp.normal = x.inverseTranspose * y.normal;
-        temp.normal[3] = 0.0f;
+        temp.normal[3] = 0.0;
         temp.normal.normalize();
         temp.point = x.matrix * y.point;
     }
@@ -111,15 +111,15 @@ Transformation* Transformation::compose(const vector<Transformation*> &ts) {
 class Scaling : public Transformation
 {
 public:
-    Scaling(float sx, float sy, float sz);
+    Scaling(double sx, double sy, double sz);
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 
-Scaling::Scaling(float sx, float sy, float sz) {
-    matrix << sx, 0.0f, 0.0f, 0.0f,
-              0.0f, sy, 0.0f, 0.0f,
-              0.0f, 0.0f, sz, 0.0f,
-              0.0f, 0.0f, 0.0f, 1.0f;
+Scaling::Scaling(double sx, double sy, double sz) {
+    matrix << sx, 0.0, 0.0, 0.0,
+              0.0, sy, 0.0, 0.0,
+              0.0, 0.0, sz, 0.0,
+              0.0, 0.0, 0.0, 1.0;
     inverseTranspose = matrix.inverse().transpose();
 }
 
@@ -127,16 +127,16 @@ Scaling::Scaling(float sx, float sy, float sz) {
 class Translation : public Transformation
 {
 public:
-    Translation(float tx, float ty, float tz);
+    Translation(double tx, double ty, double tz);
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 
 
-Translation::Translation(float tx, float ty, float tz) {
-    matrix << 1.0f, 0.0f, 0.0f, tx,
-              0.0f, 1.0f, 0.0f, ty,
-              0.0f, 0.0f, 1.0f, tz,
-              0.0f, 0.0f, 0.0f, 1.0f;
+Translation::Translation(double tx, double ty, double tz) {
+    matrix << 1.0, 0.0, 0.0, tx,
+              0.0, 1.0, 0.0, ty,
+              0.0, 0.0, 1.0, tz,
+              0.0, 0.0, 0.0, 1.0;
     inverseTranspose = matrix.inverse().transpose();
 }
 
@@ -144,31 +144,31 @@ Translation::Translation(float tx, float ty, float tz) {
 class Rotation : public Transformation
 {
 public:
-    Rotation(float rx, float ry, float rz);
+    Rotation(double rx, double ry, double rz);
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 
 
 
-Rotation::Rotation(float rx, float ry, float rz) {
+Rotation::Rotation(double rx, double ry, double rz) {
     Eigen::Vector3f k(rx, ry, rz);
-    float theta = k.norm();
+    double theta = k.norm();
     k.normalize();
 
 
-    Eigen::Matrix4f ux;
-    ux << 0.0f, -k[2], k[1], 0.0f,
-          k[2], 0.0f, -k[0], 0.0f,
-          -k[1], k[0], 0.0f, 0.0f,
-          0.0f, 0.0f, 0.0f, 1.0f;
+    Eigen::Matrix4d ux;
+    ux << 0.0, -k[2], k[1], 0.0,
+          k[2], 0.0, -k[0], 0.0,
+          -k[1], k[0], 0.0, 0.0,
+          0.0, 0.0, 0.0, 1.0;
 
 
-    Eigen::Matrix4f I = Eigen::Matrix4f::Identity();
+    Eigen::Matrix4d I = Eigen::Matrix4d::Identity();
 
-    float angle = theta*PI/180;
+    double angle = theta*PI/180;
 
     matrix = I + ux * sin(angle) + ux * ux * (1 - cos(angle));
-    matrix(3, 3) = 1.0f;
+    matrix(3, 3) = 1.0;
     inverseTranspose = matrix.inverse().transpose();
 }
 

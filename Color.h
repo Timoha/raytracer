@@ -8,29 +8,29 @@ using namespace std;
 
 class Color {
 private:
-    float r, g, b;
+    double r, g, b;
 public:
-    float getRed() { return r; };
-    float getGreen() { return g; };
-    float getBlue() { return b; };
+    double getRed() { return r; };
+    double getGreen() { return g; };
+    double getBlue() { return b; };
     Color();
-    Color(float inR, float inG, float inB);
+    Color(double inR, double inG, double inB);
     Color(const Color &rhs);
     Color& operator=(const Color &rhs);
-    friend Color operator* (float x, const Color& y);
-    friend Color operator* (const Color& x, float y);
+    friend Color operator* (double x, const Color& y);
+    friend Color operator* (const Color& x, double y);
     friend Color operator* (const Color& x, const Color& y);
     friend Color operator+ (const Color& x, const Color& y);
     friend ostream& operator<< (ostream &out, Color &cColor);
 };
 
 Color::Color() {
-    r = 0.0f;
-    g = 0.0f;
-    b = 0.0f;
+    r = 0.0;
+    g = 0.0;
+    b = 0.0;
 }
 
-Color::Color(float inR, float inG, float inB) {
+Color::Color(double inR, double inG, double inB) {
     r = inR;
     g = inG;
     b = inB;
@@ -54,11 +54,11 @@ Color& Color::operator=(const Color &rhs) {
     return *this;
 }
 
-Color operator* (float x, const Color& y) {
+Color operator* (double x, const Color& y) {
     return Color(y.r * x, y.g * x, y.b * x);
 }
 
-Color operator* (const Color& x, float y) {
+Color operator* (const Color& x, double y) {
     return y * x;
 }
 

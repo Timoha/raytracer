@@ -8,11 +8,11 @@ using namespace std;
 
 class Ray {
 public:
-    Eigen::Vector4f source;
-    Eigen::Vector4f direction;
-    float t_min, t_max;
+    Eigen::Vector4d source;
+    Eigen::Vector4d direction;
+    double t_min, t_max;
     Ray();
-    Ray(const Eigen::Vector4f& inSource, const Eigen::Vector4f& inDirection, float tMinIn, float tMaxIn);
+    Ray(const Eigen::Vector4d& inSource, const Eigen::Vector4d& inDirection, double tMinIn, double tMaxIn);
     Ray(const Ray &rhs);
     Ray& operator=(const Ray &rhs);
     friend ostream& operator<< (ostream &out, Ray &r);
@@ -20,13 +20,13 @@ public:
 };
 
 Ray::Ray() {
-    source = Eigen::Vector4f(0.0f, 0.0f, 0.0f, 1.0f);
-    direction = Eigen::Vector4f(0.0f, 0.0f, 0.0f, 0.0f);
-    t_min = -numeric_limits<float>::infinity();
-    t_max = numeric_limits<float>::infinity();
+    source = Eigen::Vector4d(0.0, 0.0, 0.0, 1.0);
+    direction = Eigen::Vector4d(0.0, 0.0, 0.0, 0.0);
+    t_min = -numeric_limits<double>::infinity();
+    t_max = numeric_limits<double>::infinity();
 }
 
-Ray::Ray(const Eigen::Vector4f& inSource, const Eigen::Vector4f& inDirection, float tMinIn, float tMaxIn) {
+Ray::Ray(const Eigen::Vector4d& inSource, const Eigen::Vector4d& inDirection, double tMinIn, double tMaxIn) {
     source = inSource;
     direction = inDirection;
     t_min = tMinIn;
@@ -62,9 +62,9 @@ ostream& operator<< (ostream &out, Ray &r) {
 // Let's wait and see if we need this
 class LocalGeo {
 public:
-    Eigen::Vector4f point;
-    Eigen::Vector4f normal;
-    float tHit;
+    Eigen::Vector4d point;
+    Eigen::Vector4d normal;
+    double tHit;
     bool isHit;
     LocalGeo();
     LocalGeo(const LocalGeo &rhs);
@@ -74,9 +74,9 @@ public:
 
 
 LocalGeo::LocalGeo() {
-    point = Eigen::Vector4f(0.0f, 0.0f, 0.0f, 1.0f);
-    normal = Eigen::Vector4f(0.0f, 0.0f, 0.0f, 0.0f);
-    tHit = numeric_limits<float>::infinity();
+    point = Eigen::Vector4d(0.0, 0.0, 0.0, 1.0);
+    normal = Eigen::Vector4d(0.0, 0.0, 0.0, 0.0);
+    tHit = numeric_limits<double>::infinity();
     isHit = false;
 }
 
