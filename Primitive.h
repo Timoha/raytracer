@@ -11,6 +11,15 @@
 
 using namespace std;
 
+
+void setExtrems(Eigen::Vector4d& currMin, const Eigen::Vector4d& newMin, Eigen::Vector4d& currMax, const Eigen::Vector4d& newMax) {
+    for (int i = 0; i < 3; i++) {
+        currMin[i] = fmin(currMin[i], newMin[i]);
+        currMax[i] = fmax(currMax[i], newMax[i]);
+    }
+}
+
+
 class Primitive;
 
 class Material {
@@ -55,6 +64,7 @@ public:
     virtual bool isHit(const Ray& ray) const = 0;
     virtual Intersection intersect(const Ray& ray) const = 0;
     virtual Material getBRDF() const = 0;
+    virtual void getAABB(Eigen::Vector4d& minV, Eigen::Vector4d& maxV) const = 0;
 };
 
 inline Primitive::~Primitive() {
@@ -74,8 +84,7 @@ public:
     bool isHit(const Ray& ray) const;
     Intersection intersect(const Ray& ray) const;
     Material getBRDF() const { return material; }
-    const Shape* getShape() { return shape; }
-    const Transformation* getObjToWorld() { return objToWorld; }
+    void getAABB(Eigen::Vector4d& minV, Eigen::Vector4d& maxV) const;
 };
 
 
@@ -116,6 +125,50 @@ Intersection GeometricPrimitive::intersect(const Ray &ray) const {
 }
 
 
+void GeometricPrimitive::getAABB(Eigen::Vector4d& minV, Eigen::Vector4d& maxV) const {
+    vector<Eigen::Vector4d, Eigen::aligned_allocator<Eigen::Vector4d> > corners;
+    corners = shape->getAABB();
+
+    double minX = numeric_limits<double>::infinity();
+    double minY = minX;
+    double minZ = minX;
+    double maxX = -numeric_limits<double>::infinity();
+    double maxY = maxX;
+    double maxZ = maxX;
+
+    // apply objectToWorld transformation and find extremes
+    for (int i = 0; i < corners.size(); i++) {
+        corners[i] = *objToWorld * corners[i];
+        if (corners[i][0] > maxX) {
+            maxX = corners[i][0];
+        }
+
+        if (corners[i][1] > maxY) {
+            maxY = corners[i][1];
+        }
+
+        if (corners[i][2] > maxZ) {
+            maxZ = corners[i][2];
+        }
+
+        if (corners[i][0] < minX) {
+            minX = corners[i][0];
+        }
+
+        if (corners[i][1] < minY) {
+            minY = corners[i][1];
+        }
+
+        if (corners[i][2] < minZ) {
+            minZ = corners[i][2];
+        }
+    }
+
+    minV = Eigen::Vector4d(minX, minY, minZ, 1.0);
+    maxV = Eigen::Vector4d(maxX, maxY, maxZ, 1.0);
+}
+
+
 class AggregatePrimitive : public Primitive
 {
 
@@ -126,8 +179,8 @@ public:
     bool isHit(const Ray& ray) const;
     Intersection intersect(const Ray& ray) const;
     Material getBRDF() const { exit(1); }
-    const vector<Primitive*>& getPrimitives() { return primitives; }
-
+    const vector<Primitive*>& getPrimitives() const { return primitives; }
+    void getAABB(Eigen::Vector4d& minV, Eigen::Vector4d& maxV) const;
 
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
@@ -171,6 +224,14 @@ Intersection AggregatePrimitive::intersect(const Ray &ray) const {
     }
 
     return finalInter;
+}
+
+void AggregatePrimitive::getAABB(Eigen::Vector4d& minV, Eigen::Vector4d& maxV) const {
+    for(int i = 0; i < primitives.size(); i++) {
+        Eigen::Vector4d currMin, currMax;
+        primitives[i]->getAABB(currMin, currMax);
+        setExtrems(minV, currMin, maxV, currMax);
+    }
 }
 
 #endif

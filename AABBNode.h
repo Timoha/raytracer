@@ -5,6 +5,8 @@
 #include <limits>
 #include <vector>
 #include <iostream>
+#include <algorithm>
+#include <iterator>
 
 #include <Eigen/Dense>
 #include <Eigen/StdVector>
@@ -21,150 +23,53 @@ class AABBNode {
 private:
     Eigen::Vector4d minV, maxV;
     Primitive* primitive;
-    vector<AABBNode*> children;
-    void calculateAABB(const GeometricPrimitive* gp, Eigen::Vector4d& currMin, Eigen::Vector4d& currMax);
-    void calculateAABB(const AggregatePrimitive* ap, Eigen::Vector4d& currMin, Eigen::Vector4d& currMax);
-    void setExtrems(Eigen::Vector4d& currMin, const Eigen::Vector4d& newMin, Eigen::Vector4d& currMax, const Eigen::Vector4d& newMax) const;
-    vector<Eigen::Vector4d, Eigen::aligned_allocator<Eigen::Vector4d> > calcObjSpaceAABB(const Sphere* sp) const;
-    vector<Eigen::Vector4d, Eigen::aligned_allocator<Eigen::Vector4d> > calcObjSpaceAABB(const Triangle* tr) const;
+    vector<const AABBNode*> children;
     bool isIntersect(const Ray& r) const;
+    void getRelevantPrimitives(const AABBNode* node, const Ray& r, vector<const Primitive*>& result) const;
+    const AABBNode* constructTree(vector<AABBNode*>::iterator start, vector<AABBNode*>::iterator end, int axis);
+    friend bool sortByX(AABBNode* a, AABBNode* b);
+    friend bool sortByY(AABBNode* a, AABBNode* b);
+    friend bool sortByZ(AABBNode* a, AABBNode* b);
+
 public:
     AABBNode();
+    void constructTree(vector<Primitive*>& prims);
     ~AABBNode();
     void addNode(const AABBNode* node);
-    void setPrimitive(const Primitive* p);
-    const vector<Primitive*>& getRelevantPrimitives(const Ray& r) const;
+    void setPrimitive(Primitive* p);
+    const vector<const Primitive*> getRelevantPrimitives(const Ray& r) const;
+
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 
-void setExtrems(Eigen::Vector4d& currMin, const Eigen::Vector4d& newMin, Eigen::Vector4d& currMax, const Eigen::Vector4d& newMax) const {
-    for (int i = 0; i < 3; i++) {
-        currMin[i] = fmin(currMin[i], newMin);
-        currMax[i] = fmax(currMax[i], newMax);
-    }
+
+const vector<const Primitive*> AABBNode::getRelevantPrimitives(const Ray& r) const {
+    vector<const Primitive*> result;
+    getRelevantPrimitives(this, r, result);
+    return result;
 }
 
 
-vector<Eigen::Vector4d, Eigen::aligned_allocator<Eigen::Vector4d> >
-AABBNode::calcObjSpaceAABB(const Sphere* sp) const {
-    vector<Eigen::Vector4d, Eigen::aligned_allocator<Eigen::Vector4d> > corners;
-
-    Eigen::Vector4d o = sp->getOrigin();
-    double r = sp->getRadius();
-    Eigen::Vector4d maxCorner = Eigen::Vector4d(r, r, r, 0.0);
-    corners.push_back(maxCorner + o); // +, +, +
-
-    Eigen::Vector4d temp = maxCorner;
-    for (int i = 0; i < 5; i++) { // (-, +, +); (-, -, +); (-, -, -); (+, -, -); (+, +, -);
-        temp[i % 3] *= -1;
-        corners.push_back(temp + o);
+void AABBNode::getRelevantPrimitives(const AABBNode* node, const Ray& r, vector<const Primitive*>& result) const {
+    if (node == NULL) {
+        return;
     }
 
-    temp[0] *= -1;
-    corners.push_back(temp + o); // (-, +, -);
 
-    corners.push_back(-temp + o); // (+, -, +);
-
-    return corners;
-}
-
-
-vector<Eigen::Vector4d, Eigen::aligned_allocator<Eigen::Vector4d> >
-AABBNode::calcObjSpaceAABB(const Triangle* tr) const {
-    Eigen::Vector4d maxCorner, minCorner;
-    vector<Eigen::Vector4d, Eigen::aligned_allocator<Eigen::Vector4d> > corners;
-    // find extremes
-    for (int i = 0; i < maxCorner.size() - 1; i++) {
-        maxCorner[i] = fmax((tr->getA())[i], fmax((tr->getB())[i], (tr->getC())[i]));
-        minCorner[i] = fmin((tr->getA())[i], fmin((tr->getB())[i], (tr->getC())[i]));
+    if (!node->isIntersect(r)) {
+        return;
     }
 
-    // for affine transforms
-    maxCorner[3] = 1.0f;
-    minCorner[3] = 1.0f;
-    corners.push_back(maxCorner);
-    corners.push_back(minCorner);
-
-
-    // find other corners
-    Eigen::Vector4d lbf;
-    lbf << minCorner[0], minCorner[1], maxCorner[2], 1.0;
-    corners.push_back(lbf);
-
-    Eigen::Vector4d rbf;
-    rbf << maxCorner[0], minCorner[1], maxCorner[2], 1.0;
-    corners.push_back(rbf);
-
-    Eigen::Vector4d rbb;
-    rbb << maxCorner[0], minCorner[1], minCorner[2], 1.0;
-    corners.push_back(rbb);
-
-    Eigen::Vector4d rtb;
-    rtb << maxCorner[0], maxCorner[1], minCorner[2], 1.0;
-    corners.push_back(rtb);
-
-    Eigen::Vector4d ltb;
-    ltb << minCorner[0], maxCorner[1], minCorner[2], 1.0;
-    corners.push_back(ltb);
-
-    Eigen::Vector4d ltf;
-    ltf << minCorner[0], maxCorner[1], maxCorner[2], 1.0;
-    corners.push_back(ltf);
-
-    return corners;
-}
-
-
-AABBNode::calculateAABB(const GeometricPrimitive* gp, Eigen::Vector4d& currMin, Eigen::Vector4d& currMax) {
-    vector<Eigen::Vector4d, Eigen::aligned_allocator<Eigen::Vector4d> > corners;
-    corners = calcObjSpaceAABB(gp->getShape());
-    Transformation* otw = gp->getObjToWorld();
-
-    double minX = numeric_limits<double>::infinity();
-    double minY = minX;
-    double minZ = minX;
-    double maxX = -numeric_limits<double>::infinity();
-    double maxY = maxX;
-    double maxZ = maxX;
-
-    // apply objectToWorld transformation and find extremes
-    for (int i = 0; i < corners.size(); i++) {
-        corners[i] = otw * corners[i];
-        if (corners[i][0] > maxX) {
-            maxX = corners[i][0];
-        }
-
-        if (corners[i][1] > maxY) {
-            maxY = corners[i][1];
-        }
-
-        if (corners[i][2] > maxZ) {
-            maxZ = corners[i][2];
-        }
-
-        if (corners[i][0] < minX) {
-            minX = corners[i][0];
-        }
-
-        if (corners[i][1] < minY) {
-            minY = corners[i][1];
-        }
-
-        if (corners[i][2] < minZ) {
-            minZ = corners[i][2];
-        }
+    if (node->primitive != NULL) {
+        result.push_back(node->primitive);
+        return;
     }
 
-    setExtrems(minV, Eigen::Vector4d(minX, minY, minZ, 1.0), maxV, Eigen::Vector4d(maxX, maxY, maxZ, 1.0));
-}
-
-
-void AABBNode::calculateAABB(const AggregatePrimitive* ap, Eigen::Vector4d& currMin, Eigen::Vector4d& currMax) {
-    vector<Primitive*> primitives = ap->getPrimitives();
-
-    for(int i = 0; i < primitives.size; i++) {
-        calculateAABB(primitives[i], currMin, currMax);
+    for(int i = 0; i < (node->children).size(); i++) {
+        getRelevantPrimitives((node->children)[i], r, result);
     }
 }
+
 
 
 AABBNode::AABBNode() {
@@ -173,20 +78,85 @@ AABBNode::AABBNode() {
     maxV << -numeric_limits<double>::infinity(), -numeric_limits<double>::infinity(), -numeric_limits<double>::infinity(), 1.0;
 }
 
+
+
+bool sortByX(AABBNode* a, AABBNode* b) {
+    return a->minV[0] < b->minV[0];
+}
+
+bool sortByY(AABBNode* a, AABBNode* b) {
+    return a->minV[1] < b->minV[1];
+}
+
+bool sortByZ(AABBNode* a, AABBNode* b) {
+    return a->minV[2] < b->minV[2];
+}
+
+
+void AABBNode::constructTree(vector<Primitive*>& prims) {
+    vector<AABBNode*> boxes;
+    for (int i = 0; i < prims.size(); i++) {
+        AABBNode* newNode = new AABBNode();
+        newNode->setPrimitive(prims[i]);
+        boxes.push_back(newNode);
+    }
+
+    *this = *constructTree(boxes.begin(), boxes.end(), 0);
+}
+
+
+// CREDITS:
+// tree heuristing is adapted from http://www.cs.utah.edu/~bes/papers/fastRT/paper-node8.html
+const AABBNode* AABBNode::constructTree(vector<AABBNode*>::iterator start, vector<AABBNode*>::iterator end, int axis) {
+
+
+    AABBNode* rootNode = new AABBNode();
+
+    if (end - start <= 0) {
+        return NULL;
+    }
+
+    if (end - start == 1) {
+        return *start;
+    }
+
+
+    rootNode->primitive = NULL;
+
+    if (axis == 0) {
+        sort(start, end, sortByX);
+    } else if (axis == 1) {
+        sort(start, end, sortByY);
+    } else if (axis == 2) {
+        sort(start, end, sortByZ);
+    }
+
+    axis = (axis + 1) % 3;
+
+    vector<AABBNode*>::iterator endFirstHalf = start + (end - start) / 2;
+    const AABBNode* leftNode = constructTree(start, endFirstHalf, axis);
+    const AABBNode* rightNode = constructTree(endFirstHalf, end, axis);
+
+    rootNode->addNode(leftNode);
+    rootNode->addNode(rightNode);
+
+    return rootNode;
+}
+
 AABBNode::~AABBNode() {
-    for (vector<AABBNode*>::iterator it = v.children(); it != v.children(); ++it) {
-        delete *it;
+    for (int i = 0; i < children.size(); i++) {
+        delete children[i];
     }
 }
 
-void AABBNode::setPrimitive(const Primitive *p) {
+void AABBNode::setPrimitive(Primitive *p) {
     if (!children.empty()) {
         throw logic_error("It's illigal to set primitive for non-leaf AABBnode.");
     }
 
     primitive = p;
 
-    calculateAABB(p, minV, maxV);
+    p->getAABB(minV, maxV);
 }
 
 void AABBNode::addNode(const AABBNode* node) {
@@ -201,9 +171,9 @@ void AABBNode::addNode(const AABBNode* node) {
 
 
 // CREDITS:
-// CODE FOR THIS FUNCTION WAS TAKEN FROM
+// CODE FOR THIS FUNCTION WAS ADAPTED FROM
 // THE FOLLOWING BLOG POST http://tavianator.com/2011/05/fast-branchless-raybounding-box-intersections/
-bool isIntersect(const Ray& ray) const {
+bool AABBNode::isIntersect(const Ray& ray) const {
     double tmin = -numeric_limits<double>::infinity(), tmax = numeric_limits<double>::infinity();
 
 

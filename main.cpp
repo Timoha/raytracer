@@ -21,6 +21,7 @@
 #include "Scene.h"
 #include "Ray.h"
 #include "ObjParser.h"
+#include "AABBNode.h"
 
 
 using namespace std;
@@ -37,6 +38,8 @@ Eigen::Vector4d yvec; // vertical basis vector of focal plane
 int height = 1000;
 int width = 1000;
 int depth = 10;
+
+AABBNode rootAABB;
 
 
 vector<Primitive*> primitives;
@@ -66,8 +69,9 @@ Color trace(const Ray& ray, const vector<Primitive*>& primitives, int depth){
     Intersection closestInter, intersect;
     bool isPrimitiveHit = false;
 
-    for (int i = 0; i < primitives.size(); i++) {
-        intersect = primitives[i]->intersect(ray);
+    vector<const Primitive*> relevant = rootAABB.getRelevantPrimitives(ray);
+    for (int i = 0; i < relevant.size(); i++) {
+        intersect = relevant[i]->intersect(ray);
         if (intersect.local.isHit && intersect.local.tHit < closest_t){
             isPrimitiveHit = true;
             closest_t = intersect.local.tHit;
@@ -110,8 +114,10 @@ Color trace(const Ray& ray, const vector<Primitive*>& primitives, int depth){
         // shadows
         bool isShadowHit = false;
         Ray shadowRay(surfacepoint, l, 0.0, numeric_limits<double>::infinity());
-        for (int x = 0; x < primitives.size(); x++) {
-            intersect = primitives[x]->intersect(shadowRay);
+
+        vector<const Primitive*> relevantShadow = rootAABB.getRelevantPrimitives(shadowRay);
+        for (int x = 0; x < relevantShadow.size(); x++) {
+            intersect = relevantShadow[x]->intersect(shadowRay);
             if (intersect.local.isHit && closestInter.primitive != intersect.primitive){
                 isShadowHit = true;
                 break;
@@ -143,7 +149,7 @@ Color trace(const Ray& ray, const vector<Primitive*>& primitives, int depth){
     rgbDiffuse = rgbDiffuse * primitiveBRDF.diffuse;
     rgbSpecular = rgbSpecular * primitiveBRDF.specular;
 
-    Eigen::Vector4d rd = v - 2 * v.dot(n) * n;
+    Eigen::Vector4d rd = v - 2 * n.dot(v) * n;
     rd.normalize();
 
     Ray reflect(surfacepoint, rd, 0.0, numeric_limits<double>::infinity());
@@ -206,13 +212,13 @@ void parseLine(const string& line) {
 
         vector<Triangle*> ts = object.getTriangles();
 
-        vector<Primitive*>* aggregate = new vector<Primitive*>;
+//        vector<Primitive*>* aggregate = new vector<Primitive*>;
 
         for (int i = 0; i < ts.size(); i++) {
-            aggregate->push_back(new GeometricPrimitive(ts[i], currentMaterial, currentTransform));
+            primitives.push_back(new GeometricPrimitive(ts[i], currentMaterial, currentTransform));
         }
 
-        primitives.push_back(new AggregatePrimitive(*aggregate));
+//        primitives.push_back(new AggregatePrimitive(*aggregate));
 
     } else if (tokens[0] == "ltp") {
         checkNumArguments(tokens, 6);
@@ -322,6 +328,11 @@ int main(int argc, const char * argv[]) {
     } else {
         cout << "Invalid argument." << endl;
     }
+
+    cout << "Constructing acceleration structure..." << endl;
+
+    // acceleration
+    rootAABB.constructTree(primitives);
 
 
     xvec = UR - UL;

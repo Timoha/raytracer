@@ -21,6 +21,7 @@ public:
     Transformation& operator=(const Transformation &rhs);
     friend ostream& operator<< (ostream &out, Transformation &t);
     friend Transformation operator* (const Transformation& x, const Transformation& y);
+    friend Eigen::Vector4d operator* (const Transformation& x, const Eigen::Vector4d& y);
     friend Ray operator* (const Transformation& x, const Ray& y);
     friend LocalGeo operator* (const Transformation& x, const LocalGeo& y);
 
@@ -87,6 +88,10 @@ LocalGeo operator* (const Transformation& x, const LocalGeo& y) {
         temp.point = x.matrix * y.point;
     }
     return temp;
+}
+
+Eigen::Vector4d operator* (const Transformation& x, const Eigen::Vector4d& y) {
+    return x.matrix * y;
 }
 
 

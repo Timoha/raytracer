@@ -5,9 +5,10 @@
 #include <math.h>
 
 #include <Eigen/Dense>
+#include <Eigen/StdVector>
 #include "Ray.h"
 
-#define EPSILON 0.000001f
+#define EPSILON 0.00001f
 
 using namespace std;
 
@@ -18,6 +19,8 @@ public:
     virtual ~Shape() = 0;
     virtual bool isHit(const Ray& ray) const = 0;
     virtual LocalGeo intersect(const Ray& ray) const = 0;
+    virtual vector<Eigen::Vector4d, Eigen::aligned_allocator<Eigen::Vector4d> > getAABB() const = 0;
+
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 
@@ -35,8 +38,7 @@ public:
     ~Sphere();
     bool isHit(const Ray& ray) const;
     LocalGeo intersect(const Ray& ray) const;
-    Eigen::Vector4d getOrigin() { return origin; }
-    double getRadius() { return radius; }
+    vector<Eigen::Vector4d, Eigen::aligned_allocator<Eigen::Vector4d> > getAABB() const;
 
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 private:
@@ -105,6 +107,28 @@ LocalGeo Sphere::intersect(const Ray& ray) const {
 
 
 
+vector<Eigen::Vector4d, Eigen::aligned_allocator<Eigen::Vector4d> > Sphere::getAABB() const {
+    vector<Eigen::Vector4d, Eigen::aligned_allocator<Eigen::Vector4d> > corners;
+
+    Eigen::Vector4d maxCorner = Eigen::Vector4d(radius, radius, radius, 0.0);
+    corners.push_back(maxCorner + origin); // +, +, +
+
+    Eigen::Vector4d temp = maxCorner;
+    for (int i = 0; i < 5; i++) { // (-, +, +); (-, -, +); (-, -, -); (+, -, -); (+, +, -);
+        temp[i % 3] *= -1;
+        corners.push_back(temp + origin);
+    }
+
+    temp[0] *= -1;
+    corners.push_back(temp + origin); // (-, +, -);
+
+    corners.push_back(-temp + origin); // (+, -, +);
+
+    return corners;
+}
+
+
+
 class Triangle : public Shape
 {
 public:
@@ -114,9 +138,7 @@ public:
              const Eigen::Vector4d& inNormalA, const Eigen::Vector4d& inNormalB, const Eigen::Vector4d& inNormalC);
     bool isHit(const Ray& ray) const;
     LocalGeo intersect(const Ray& ray) const;
-    Eigen::Vector3d getA() { return vertexA; }
-    Eigen::Vector3d getB() { return vertexB; }
-    Eigen::Vector3d getC() { return vertexC; }
+    vector<Eigen::Vector4d, Eigen::aligned_allocator<Eigen::Vector4d> > getAABB() const;
 
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 private:
@@ -162,8 +184,7 @@ bool Triangle::isHit(const Ray& ray) const {
 
     double M = d.dot(n);
     if (abs(M) < EPSILON) {
-        local.isHit = false;
-        return local;
+        return false;
     }
 
 
@@ -194,10 +215,10 @@ LocalGeo Triangle::intersect(const Ray& ray) const {
     Eigen::Vector3d n = ab.cross(ac);
 
     double M = d.dot(n);
-    if (abs(M) < EPSILON) {
-        local.isHit = false;
-        return local;
-    }
+//    if (abs(M) < EPSILON * EPSILON) {
+//        local.isHit = false;
+//        return local;
+//    }
 
     double t = as.dot(n) / M;
     if (t < ray.t_min + EPSILON || t > ray.t_max) {
@@ -226,6 +247,51 @@ LocalGeo Triangle::intersect(const Ray& ray) const {
     local.normal = (normalA * (1.0 - gamma - beta) + normalB * gamma + normalC * beta).normalized();
 
     return local;
+}
+
+
+vector<Eigen::Vector4d, Eigen::aligned_allocator<Eigen::Vector4d> > Triangle::getAABB() const {
+    Eigen::Vector4d maxCorner, minCorner;
+    vector<Eigen::Vector4d, Eigen::aligned_allocator<Eigen::Vector4d> > corners;
+    // find extremes
+    for (int i = 0; i < maxCorner.size() - 1; i++) {
+        maxCorner[i] = fmax(vertexA[i], fmax(vertexB[i], vertexC[i]));
+        minCorner[i] = fmin(vertexA[i], fmin(vertexB[i], vertexC[i]));
+    }
+
+    // for affine transforms
+    maxCorner[3] = 1.0f;
+    minCorner[3] = 1.0f;
+    corners.push_back(maxCorner);
+    corners.push_back(minCorner);
+
+
+    // find other corners
+    Eigen::Vector4d lbf;
+    lbf << minCorner[0], minCorner[1], maxCorner[2], 1.0;
+    corners.push_back(lbf);
+
+    Eigen::Vector4d rbf;
+    rbf << maxCorner[0], minCorner[1], maxCorner[2], 1.0;
+    corners.push_back(rbf);
+
+    Eigen::Vector4d rbb;
+    rbb << maxCorner[0], minCorner[1], minCorner[2], 1.0;
+    corners.push_back(rbb);
+
+    Eigen::Vector4d rtb;
+    rtb << maxCorner[0], maxCorner[1], minCorner[2], 1.0;
+    corners.push_back(rtb);
+
+    Eigen::Vector4d ltb;
+    ltb << minCorner[0], maxCorner[1], minCorner[2], 1.0;
+    corners.push_back(ltb);
+
+    Eigen::Vector4d ltf;
+    ltf << minCorner[0], maxCorner[1], maxCorner[2], 1.0;
+    corners.push_back(ltf);
+
+    return corners;
 }
 
 #endif
