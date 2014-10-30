@@ -18,14 +18,28 @@
 
 using namespace std;
 
+
+class Vertex {
+
+public:
+    vector<Triangle*> faces;
+    Eigen::Vector3d* v;
+
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+};
+
 class ObjParser {
 
 private:
     vector<Triangle*> triangles;
     vector<Eigen::Vector3d*> verticies;
+    vector<Vertex> verticiesInter;
     vector<Eigen::Vector4d*> normals;
     void parseLine(const string& line);
     vector<int> splitSlash(const vector<string>& tokens);
+
+    bool isNormals;
 
 public:
     ObjParser(string filePath);
@@ -44,6 +58,7 @@ ObjParser::ObjParser(string filePath){
     ifstream fin;
     string line;
 
+    isNormals = true;
 
     fin.open(filePath.c_str());
 
@@ -111,19 +126,22 @@ void ObjParser::parseLine(const string& line) {
             Triangle* tri = new Triangle(*verticies[indicies[0] - 1], *verticies[indicies[1] - 1], *verticies[indicies[2] - 1]);
             triangles.push_back(tri);
         } else if (indicies.size() == 6) {
+
             Triangle* tri = new Triangle(*verticies[indicies[0] - 1], *verticies[indicies[2] - 1], *verticies[indicies[4] - 1],
                                          *normals[indicies[1] - 1], *normals[indicies[3] - 1], *normals[indicies[5] - 1]);
             triangles.push_back(tri);
         } else if (indicies.size() == 9) {
+
             Triangle* tri = new Triangle(*verticies[indicies[0] - 1], *verticies[indicies[3] - 1], *verticies[indicies[6] - 1],
                                          *normals[indicies[2] - 1], *normals[indicies[5] - 1], *normals[indicies[8] - 1]);
+
             triangles.push_back(tri);
         } else {
             throw invalid_argument("Don't know how to parse face.");
         }
 
     } else {
-        throw invalid_argument("Unrecognized command: " + tokens[0]);
+//        throw invalid_argument("Unrecognized command: " + tokens[0]);
     }
 }
 

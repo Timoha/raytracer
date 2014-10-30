@@ -23,10 +23,10 @@ class AABBNode {
 private:
     Eigen::Vector4d minV, maxV;
     Primitive* primitive;
-    vector<const AABBNode*> children;
+    const AABBNode* leftChild, *rightChild;
     bool isIntersect(const Ray& r) const;
     void getRelevantPrimitives(const AABBNode* node, const Ray& r, vector<const Primitive*>& result) const;
-    const AABBNode* constructTree(vector<AABBNode*>::iterator start, vector<AABBNode*>::iterator end, int axis);
+    const AABBNode* constructTree(vector<AABBNode*>::iterator, vector<AABBNode*>::iterator, int, double);
     friend bool sortByX(AABBNode* a, AABBNode* b);
     friend bool sortByY(AABBNode* a, AABBNode* b);
     friend bool sortByZ(AABBNode* a, AABBNode* b);
@@ -38,9 +38,21 @@ public:
     void addNode(const AABBNode* node);
     void setPrimitive(Primitive* p);
     const vector<const Primitive*> getRelevantPrimitives(const Ray& r) const;
+    double getVolume() const;
+    double getSurfaceArea() const;
 
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
+
+double AABBNode::getVolume() const {
+    Eigen::Vector4d diff = maxV - minV;
+    return diff[0] * diff[1] * diff[2];
+}
+
+double AABBNode::getSurfaceArea() const {
+    Eigen::Vector4d diff = maxV - minV;
+    return 2*diff[0] * diff[1] + 2 * diff[1] * diff[2] + 2 * diff[0] * diff[2];
+}
 
 
 const vector<const Primitive*> AABBNode::getRelevantPrimitives(const Ray& r) const {
@@ -55,7 +67,6 @@ void AABBNode::getRelevantPrimitives(const AABBNode* node, const Ray& r, vector<
         return;
     }
 
-
     if (!node->isIntersect(r)) {
         return;
     }
@@ -65,15 +76,16 @@ void AABBNode::getRelevantPrimitives(const AABBNode* node, const Ray& r, vector<
         return;
     }
 
-    for(int i = 0; i < (node->children).size(); i++) {
-        getRelevantPrimitives((node->children)[i], r, result);
-    }
+    getRelevantPrimitives(node->leftChild, r, result);
+    getRelevantPrimitives(node->rightChild, r, result);
 }
 
 
 
 AABBNode::AABBNode() {
     primitive = NULL;
+    leftChild = NULL;
+    rightChild = NULL;
     minV << numeric_limits<double>::infinity(), numeric_limits<double>::infinity(), numeric_limits<double>::infinity(), 1.0;
     maxV << -numeric_limits<double>::infinity(), -numeric_limits<double>::infinity(), -numeric_limits<double>::infinity(), 1.0;
 }
@@ -95,20 +107,21 @@ bool sortByZ(AABBNode* a, AABBNode* b) {
 
 void AABBNode::constructTree(vector<Primitive*>& prims) {
     vector<AABBNode*> boxes;
+    double totalVolume = 0.0;
     for (int i = 0; i < prims.size(); i++) {
         AABBNode* newNode = new AABBNode();
         newNode->setPrimitive(prims[i]);
+        totalVolume += newNode->getVolume();
         boxes.push_back(newNode);
     }
 
-    *this = *constructTree(boxes.begin(), boxes.end(), 0);
+    *this = *constructTree(boxes.begin(), boxes.end(), 0, totalVolume);
 }
 
 
 // CREDITS:
 // tree heuristing is adapted from http://www.cs.utah.edu/~bes/papers/fastRT/paper-node8.html
-const AABBNode* AABBNode::constructTree(vector<AABBNode*>::iterator start, vector<AABBNode*>::iterator end, int axis) {
-
+const AABBNode* AABBNode::constructTree(vector<AABBNode*>::iterator start, vector<AABBNode*>::iterator end, int axis, double totalVolume) {
 
     AABBNode* rootNode = new AABBNode();
 
@@ -120,8 +133,14 @@ const AABBNode* AABBNode::constructTree(vector<AABBNode*>::iterator start, vecto
         return *start;
     }
 
-
     rootNode->primitive = NULL;
+
+
+    if (end - start == 2) {
+        rootNode->addNode(*(start));
+        rootNode->addNode(*(start+1));
+        return rootNode;
+    }
 
     if (axis == 0) {
         sort(start, end, sortByX);
@@ -131,11 +150,26 @@ const AABBNode* AABBNode::constructTree(vector<AABBNode*>::iterator start, vecto
         sort(start, end, sortByZ);
     }
 
+
     axis = (axis + 1) % 3;
 
-    vector<AABBNode*>::iterator endFirstHalf = start + (end - start) / 2;
-    const AABBNode* leftNode = constructTree(start, endFirstHalf, axis);
-    const AABBNode* rightNode = constructTree(endFirstHalf, end, axis);
+
+    // heuristic
+    int boxesCount = 0;
+    int numBoxes = end - start;
+    double currVolume = 0.0;
+    vector<AABBNode*>::iterator endFirstHalf;
+    for (endFirstHalf = start; endFirstHalf != end - 1; ++endFirstHalf) {
+        if (currVolume * (double) boxesCount > (double) (numBoxes - boxesCount) * (totalVolume - currVolume)) {
+            break;
+        }
+        boxesCount++;
+        currVolume += (*endFirstHalf)->getVolume();
+    }
+
+
+    const AABBNode* leftNode = constructTree(start, endFirstHalf, axis, currVolume);
+    const AABBNode* rightNode = constructTree(endFirstHalf, end, axis, totalVolume - currVolume);
 
     rootNode->addNode(leftNode);
     rootNode->addNode(rightNode);
@@ -144,13 +178,13 @@ const AABBNode* AABBNode::constructTree(vector<AABBNode*>::iterator start, vecto
 }
 
 AABBNode::~AABBNode() {
-    for (int i = 0; i < children.size(); i++) {
-        delete children[i];
-    }
+
+    delete leftChild;
+    delete rightChild;
 }
 
 void AABBNode::setPrimitive(Primitive *p) {
-    if (!children.empty()) {
+    if (leftChild != NULL || rightChild != NULL) {
         throw logic_error("It's illigal to set primitive for non-leaf AABBnode.");
     }
 
@@ -164,9 +198,16 @@ void AABBNode::addNode(const AABBNode* node) {
         throw logic_error("It's illigal to add AABBnodes to leaf node.");
     }
 
-    children.push_back(node);
-
-    setExtrems(minV, node->minV, maxV, node->maxV);
+    if (leftChild == NULL) {
+        leftChild = node;
+    } else if (rightChild == NULL) {
+        rightChild = node;
+    } else {
+        throw logic_error("Trying to set third child");
+    }
+    if (node != NULL) {
+        setExtrems(minV, node->minV, maxV, node->maxV);
+    }
 }
 
 
@@ -175,7 +216,6 @@ void AABBNode::addNode(const AABBNode* node) {
 // THE FOLLOWING BLOG POST http://tavianator.com/2011/05/fast-branchless-raybounding-box-intersections/
 bool AABBNode::isIntersect(const Ray& ray) const {
     double tmin = -numeric_limits<double>::infinity(), tmax = numeric_limits<double>::infinity();
-
 
     Eigen::Vector4d t1, t2;
 
