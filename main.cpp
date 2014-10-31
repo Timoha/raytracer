@@ -38,6 +38,9 @@ Eigen::Vector4d yvec; // vertical basis vector of focal plane
 int height = 1000;
 int width = 1000;
 int depth = 10;
+int sqrtSsamplePerPixel= 4;
+
+double randomNumbers[2048];
 
 AABBNode rootAABB;
 
@@ -136,7 +139,7 @@ Color trace(const Ray& ray, const vector<Primitive*>& primitives, int depth){
         diffuseDot = n.dot(l);
 
         if (specularDot > 0.0) {
-            scaleSpecular = powf(specularDot, primitiveBRDF.specularExponent);
+            scaleSpecular = pow(specularDot, primitiveBRDF.specularExponent);
             rgbSpecular = rgbSpecular + lightColor * scaleSpecular;
         }
 
@@ -154,7 +157,42 @@ Color trace(const Ray& ray, const vector<Primitive*>& primitives, int depth){
 
     Ray reflect(surfacepoint, rd, 0.0, numeric_limits<double>::infinity());
 
-    return rgbDiffuse + rgbSpecular + rgbAmbient + primitiveBRDF.reflective * trace(reflect, primitives, depth - 1);
+    Color rgbReflected;
+
+
+    if (primitiveBRDF.isReflective) {
+        rgbReflected =  primitiveBRDF.reflective * trace(reflect, primitives, depth - 1);
+    }
+
+    if (primitiveBRDF.isDielectric){
+        Eigen::Vector4d refract;
+        double n1 = 1;
+        double n2 = primitiveBRDF.refractionCoeff;
+        double c = -n.dot(v);
+        double c1 = c;
+        double nc, c2;
+        if (-c < 0){ //entering sphere
+            nc = n1 / n2;
+            c2 = sqrt(1 - nc * nc * (1 - c1 * c1));
+            refract = nc * v + (nc * c1 - c2) * n;
+        } else { // leaving sphere
+            n2 = 1.0;
+            n1 = primitiveBRDF.refractionCoeff;
+            nc = n1 / n2;
+            c2 = sqrt(1 - nc * nc * (1 - c1 * c1));
+            refract = nc * v + (nc * c1 - c2)*n;
+            c = refract.dot(n);
+        }
+        double R0 = pow((n2 - 1)/(n2 + 1), 2);
+        double R = R0 + (1.0 - R0) * pow(1.0 - c, 5.0);
+
+        if (1.0 - R > 0.0){
+            Ray refr(surfacepoint, refract, 0.0f, numeric_limits<double>::infinity());
+            return R * rgbReflected + (1.0 - R) * trace(refr, primitives, depth);
+        }
+    }
+
+    return rgbDiffuse + rgbSpecular + rgbAmbient + rgbReflected;
 }
 
 
@@ -187,9 +225,13 @@ void parseLine(const string& line) {
         Transformation* currentTransform = new Transformation();
         currentTransform = currentTransform->compose(transforms);
 
+        currentMaterial.isDielectric = true;
+
         Sphere* sphere = new Sphere(Eigen::Vector4d(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()), 1.0), atof(tokens[4].c_str()));
 
         primitives.push_back(new GeometricPrimitive(sphere, currentMaterial, currentTransform));
+
+        currentMaterial.isDielectric = false;
 
     } else if (tokens[0] == "tri") {
         checkNumArguments(tokens, 9);
@@ -212,13 +254,10 @@ void parseLine(const string& line) {
 
         vector<Triangle*> ts = object.getTriangles();
 
-//        vector<Primitive*>* aggregate = new vector<Primitive*>;
 
         for (int i = 0; i < ts.size(); i++) {
             primitives.push_back(new GeometricPrimitive(ts[i], currentMaterial, currentTransform));
         }
-
-//        primitives.push_back(new AggregatePrimitive(*aggregate));
 
     } else if (tokens[0] == "ltp") {
         checkNumArguments(tokens, 6);
@@ -245,6 +284,13 @@ void parseLine(const string& line) {
         currentMaterial.specular = Color(atof(tokens[7].c_str()), atof(tokens[8].c_str()), atof(tokens[9].c_str()));
         currentMaterial.specularExponent = atof(tokens[10].c_str());
         currentMaterial.reflective = Color(atof(tokens[11].c_str()), atof(tokens[12].c_str()), atof(tokens[13].c_str()));
+        if (currentMaterial.reflective.getRed() != 0.0 || currentMaterial.reflective.getGreen() != 0.0 || currentMaterial.reflective.getBlue() != 0.0) {
+            currentMaterial.isReflective = true;
+        }
+
+        if (tokens.size() - 1 == 14) {
+            currentMaterial.refractionCoeff = atof(tokens[14].c_str());
+        }
     } else if (tokens[0] == "xft") {
         checkNumArguments(tokens, 3);
         transforms.push_back(new Translation(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str())));
@@ -303,10 +349,11 @@ int main(int argc, const char * argv[]) {
     if (argc >= 2) {
         fin.open(argv[1]);
 
-        if (argc == 5) {
+        if (argc == 6) {
             width = atoi(argv[2]);
             height = atoi(argv[3]);
             depth = atoi(argv[4]);
+            sqrtSsamplePerPixel = atoi(argv[5]);
         }
 
 
@@ -335,6 +382,10 @@ int main(int argc, const char * argv[]) {
     rootAABB.constructTree(primitives);
 
 
+    for (int i = 0; i < 2048; i++) {
+        randomNumbers[i] = (double) rand() /  RAND_MAX;
+    }
+
     xvec = UR - UL;
     yvec = UL - LL;
 
@@ -344,10 +395,14 @@ int main(int argc, const char * argv[]) {
     int pixelCount = 0;
     int fraction = width * height / 10;
     double totalPixelsScale = 100.0 / (width * height);
-
-
+    int currRandomIndex = 0;
+    double aax, aay;
+    Ray temp;
+    Color result;
     cout << "Raytracing..." << endl;
     timestamp_t t0 = get_timestamp();
+
+    double skwiggle = 0.0;
 
     for (int i = 0; i < width; i++){
         for (int j = 0; j < height; j++){
@@ -355,12 +410,16 @@ int main(int argc, const char * argv[]) {
             if (pixelCount % fraction == 0) {
                 cout << (int) (pixelCount * totalPixelsScale) << "%" << endl;
             }
-
-            Ray temp = generateRay((double) i / width, (double) j / height);
-            Color result = trace(temp, primitives, depth) * 255.0;
-            negative.commit(i, height - j - 1, fmin(result.getRed(), 255.0), fmin(result.getGreen(), 255.0), fmin(result.getBlue(), 255.0));
-            //FIX ME: currently only supporting one sample per pixel
-            //negative.commit(i, j, 255*i/width, 255*j/height, 200) activate this for pretty colors
+            for (int p = 0; p < sqrtSsamplePerPixel; p++) {
+                for (int q = 0; q < sqrtSsamplePerPixel; q++) {
+                    skwiggle = (double) rand() /  RAND_MAX;
+                    aax = (p + skwiggle) / sqrtSsamplePerPixel;
+                    aay = (q + skwiggle) / sqrtSsamplePerPixel;
+                    temp = generateRay((i + aax) / width, (j + aay) / height);
+                    result = trace(temp, primitives, depth);
+                    negative.commit(i, height - j - 1, result * 255.0f);
+                }
+            }
         }
     }
 

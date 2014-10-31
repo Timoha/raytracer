@@ -244,7 +244,7 @@ LocalGeo Triangle::intersect(const Ray& ray) const {
     local.isHit = true;
     local.point = ray.source + t * ray.direction;
     local.tHit = t;
-    local.normal = (normalA * (1.0 - gamma - beta) + normalB * gamma + normalC * beta).normalized();
+    local.normal = (normalA * (1.0 - gamma - beta) + beta * normalB + gamma * normalC).normalized();
 
     return local;
 }

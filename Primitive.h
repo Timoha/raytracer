@@ -26,7 +26,8 @@ class Material {
 public:
     Material();
     Color ambient, specular, diffuse, reflective;
-    double specularExponent;
+    double specularExponent, refractionCoeff;
+    bool isReflective, isDielectric;
 
     friend ostream& operator<< (ostream &out, Material &m);
 };
@@ -39,6 +40,9 @@ Material::Material() {
     diffuse = black;
     reflective = black;
     specularExponent = 0.0;
+    isReflective = false;
+    isDielectric = false;
+    refractionCoeff = 1.0;
 }
 
 ostream& operator<< (ostream &out, Material &m) {
