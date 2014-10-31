@@ -42,7 +42,7 @@ Material::Material() {
     specularExponent = 0.0;
     isReflective = false;
     isDielectric = false;
-    refractionCoeff = 1.0;
+    refractionCoeff = 0.0;
 }
 
 ostream& operator<< (ostream &out, Material &m) {

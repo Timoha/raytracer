@@ -164,7 +164,7 @@ Color trace(const Ray& ray, const vector<Primitive*>& primitives, int depth){
         rgbReflected =  primitiveBRDF.reflective * trace(reflect, primitives, depth - 1);
     }
 
-    if (primitiveBRDF.isDielectric){
+    if (primitiveBRDF.isDielectric && primitiveBRDF.refractionCoeff != 0.0){
         Eigen::Vector4d refract;
         double n1 = 1;
         double n2 = primitiveBRDF.refractionCoeff;
@@ -290,6 +290,8 @@ void parseLine(const string& line) {
 
         if (tokens.size() - 1 == 14) {
             currentMaterial.refractionCoeff = atof(tokens[14].c_str());
+        } else {
+            currentMaterial.refractionCoeff = 0.0;
         }
     } else if (tokens[0] == "xft") {
         checkNumArguments(tokens, 3);
