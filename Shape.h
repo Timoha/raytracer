@@ -25,10 +25,7 @@ public:
 };
 
 
-inline Shape::~Shape() { }
-
-
-
+inline Shape::~Shape() {}
 
 class Sphere : public Shape
 {

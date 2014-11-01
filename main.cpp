@@ -40,8 +40,6 @@ int width = 1000;
 int depth = 10;
 int sqrtSsamplePerPixel= 4;
 
-double randomNumbers[2048];
-
 AABBNode rootAABB;
 
 
@@ -50,6 +48,7 @@ vector<Transformation*> transforms;
 vector<Light*> lights;
 
 Material currentMaterial;
+Material tiledMaterial;
 ALight globalAmbient(Color(0.0, 0.0, 0.0));
 
 
@@ -293,6 +292,52 @@ void parseLine(const string& line) {
         } else {
             currentMaterial.refractionCoeff = 0.0;
         }
+    } else if (tokens[0] == "tmat") {
+        checkNumArguments(tokens, 13);
+        tiledMaterial.ambient = Color(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()));
+        tiledMaterial.diffuse = Color(atof(tokens[4].c_str()), atof(tokens[5].c_str()), atof(tokens[6].c_str()));
+        tiledMaterial.specular = Color(atof(tokens[7].c_str()), atof(tokens[8].c_str()), atof(tokens[9].c_str()));
+        tiledMaterial.specularExponent = atof(tokens[10].c_str());
+        tiledMaterial.reflective = Color(atof(tokens[11].c_str()), atof(tokens[12].c_str()), atof(tokens[13].c_str()));
+        if (tiledMaterial.reflective.getRed() != 0.0 || tiledMaterial.reflective.getGreen() != 0.0 || tiledMaterial.reflective.getBlue() != 0.0) {
+            tiledMaterial.isReflective = true;
+        }
+
+        if (tokens.size() - 1 == 14) {
+            tiledMaterial.refractionCoeff = atof(tokens[14].c_str());
+        } else {
+            tiledMaterial.refractionCoeff = 0.0;
+        }
+    } else if (tokens[0] == "check") {
+        checkNumArguments(tokens, 6);
+        Transformation* currentTransform = new Transformation();
+        currentTransform = currentTransform->compose(transforms);
+
+        Eigen::Vector3d source(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str()));
+        Eigen::Vector3d xvec(atof(tokens[4].c_str()), atof(tokens[5].c_str()), atof(tokens[6].c_str()));
+        Eigen::Vector3d yvec(atof(tokens[7].c_str()), atof(tokens[8].c_str()), atof(tokens[9].c_str()));
+        float width = atof(tokens[10].c_str());
+        float height = atof(tokens[11].c_str());
+        float dim = atof(tokens[12].c_str());
+
+        xvec.normalize();
+        yvec.normalize();
+        for (int i=0; i<width;i++){
+            for(int j=0; j<height; j++){
+                Eigen::Vector3d start= source+dim*i*xvec+dim*j*yvec;
+                Triangle* rectangle1 = new Triangle(start, start+dim*xvec, start+dim*yvec);
+                Triangle* rectangle2 = new Triangle(start+dim*xvec, start+dim*yvec+dim*xvec,start+dim*yvec);
+                if((i+j)%2==0){
+                    primitives.push_back(new GeometricPrimitive(rectangle1, currentMaterial, currentTransform));
+                    primitives.push_back(new GeometricPrimitive(rectangle2, currentMaterial, currentTransform));
+                }
+                else{
+                    primitives.push_back(new GeometricPrimitive(rectangle1, tiledMaterial, currentTransform));
+                    primitives.push_back(new GeometricPrimitive(rectangle2, tiledMaterial, currentTransform));
+                }
+            }
+        }
+
     } else if (tokens[0] == "xft") {
         checkNumArguments(tokens, 3);
         transforms.push_back(new Translation(atof(tokens[1].c_str()), atof(tokens[2].c_str()), atof(tokens[3].c_str())));
@@ -383,10 +428,6 @@ int main(int argc, const char * argv[]) {
     // acceleration
     rootAABB.constructTree(primitives);
 
-
-    for (int i = 0; i < 2048; i++) {
-        randomNumbers[i] = (double) rand() /  RAND_MAX;
-    }
 
     xvec = UR - UL;
     yvec = UL - LL;
